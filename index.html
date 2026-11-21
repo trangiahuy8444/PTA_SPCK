@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuần 1: Lên Ý Tưởng AI & Uizard | App Producer Advanced</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Dedicated print styles so exporting PDF prints ONLY the Project Brief cleanly */
+        @media print {
+            body {
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            header,
+            footer,
+            #toast-container,
+            #brief-editor-col,
+            #brief-action-bar,
+            #panel-roadmap,
+            #panel-idea,
+            #panel-uizard {
+                display: none !important;
+            }
+            main {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #panel-deliverable {
+                display: block !important;
+            }
+            #brief-preview-col {
+                grid-column: span 12 / span 12 !important;
+            }
+            #brief-document-sheet {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container (Replaces alert) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header & Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+            <!-- Course Branding -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid fa-layer-group text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Tuần 1 / 4</span>
+                        <span class="text-xs font-medium text-slate-500 hidden sm:inline">App Producer Advanced • Qt Designer + Python</span>
+                    </div>
+                    <h1 class="text-base sm:text-lg font-extrabold text-slate-900 leading-tight">Lên Ý Tưởng AI & Tạo Giao Diện Mẫu Uizard</h1>
+                </div>
+            </div>
+
+            <!-- Student Project Status Pill -->
+            <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3.5 py-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                <span class="text-xs sm:text-sm font-bold text-indigo-800">Dự án cá nhân • 4 Tuần</span>
+            </div>
+        </div>
+
+        <!-- Stepper Navigation Bar -->
+        <div class="bg-slate-50/80 border-t border-slate-200">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav class="flex overflow-x-auto no-scrollbar py-2 gap-2" aria-label="Các bước thực hành Tuần 1">
+                    <button onclick="switchTab('roadmap')" id="tab-roadmap" class="tab-btn flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition bg-indigo-600 text-white shadow-sm">
+                        <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">0</span>
+                        Lộ trình buổi học (2h)
+                    </button>
+                    <button onclick="switchTab('idea')" id="tab-idea" class="tab-btn flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200">
+                        <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs">1</span>
+                        Tạo Prompt AI (Ý tưởng)
+                    </button>
+                    <button onclick="switchTab('uizard')" id="tab-uizard" class="tab-btn flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200">
+                        <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs">2</span>
+                        Thiết kế mẫu Uizard & Màu
+                    </button>
+                    <button onclick="switchTab('deliverable')" id="tab-deliverable" class="tab-btn flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200">
+                        <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs">3</span>
+                        PROJECT BRIEF
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- ================= TAB 0: LỘ TRÌNH BUỔI HỌC (2 TIẾNG) ================= -->
+        <section id="panel-roadmap" class="tab-panel space-y-6">
+            <!-- 4-Week Project Overview Timeline -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+                    <div>
+                        <h3 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-map-location-dot text-indigo-600"></i> Tổng quan lộ trình dự án cá nhân (4 Tuần)
+                        </h3>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Nhìn tổng thể chặng đường từ ý tưởng đến sản phẩm hoàn chỉnh để biết mình đang ở đâu và cần đạt gì.</p>
+                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold self-start sm:self-center">
+                        <i class="fa-solid fa-location-dot"></i> Đang ở Tuần 1 / 4
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative">
+                    <!-- Week 1 (Active) -->
+                    <div class="rounded-2xl p-4 bg-indigo-50/70 border-2 border-indigo-500 shadow-sm relative flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2.5">
+                                <span class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-extrabold">TUẦN 1</span>
+                                <span class="text-[11px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">Đang thực hiện</span>
+                            </div>
+                            <h4 class="font-bold text-slate-900 text-sm mb-1.5">Lên ý tưởng AI & Mẫu Uizard</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <strong>Mục tiêu:</strong> Chốt chủ đề, tên app, bảng màu Hex bằng AI và tạo bản mẫu giao diện trên Uizard.
+                            </p>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-indigo-200/70 text-[11px] font-semibold text-indigo-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-flag-checkered"></i> Đầu ra: Mô tả + 3 ảnh Uizard
+                        </div>
+                    </div>
+
+                    <!-- Week 2 -->
+                    <div class="rounded-2xl p-4 bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2.5">
+                                <span class="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-extrabold">TUẦN 2</span>
+                                <span class="text-[11px] font-medium text-slate-400">Sắp tới</span>
+                            </div>
+                            <h4 class="font-bold text-slate-900 text-sm mb-1.5">Thiết kế giao diện Qt Designer</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <strong>Mục tiêu:</strong> Chuyển đổi bản mẫu Uizard thành giao diện thực tế, trang trí bằng QSS và đặt <code class="text-[11px] bg-slate-200/70 px-1 rounded">objectName</code> chuẩn.
+                            </p>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-200 text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-regular fa-file-code"></i> Đầu ra: 3 file .ui hoàn chỉnh
+                        </div>
+                    </div>
+
+                    <!-- Week 3 -->
+                    <div class="rounded-2xl p-4 bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2.5">
+                                <span class="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-extrabold">TUẦN 3</span>
+                                <span class="text-[11px] font-medium text-slate-400">Sắp tới</span>
+                            </div>
+                            <h4 class="font-bold text-slate-900 text-sm mb-1.5">Lập trình chức năng Python</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <strong>Mục tiêu:</strong> Code luồng Đăng ký, lưu tài khoản vào file, kiểm tra Đăng nhập và chuyển đổi mượt mà giữa các màn hình.
+                            </p>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-200 text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-brands fa-python"></i> Đầu ra: App chạy đủ chức năng
+                        </div>
+                    </div>
+
+                    <!-- Week 4 -->
+                    <div class="rounded-2xl p-4 bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2.5">
+                                <span class="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-extrabold">TUẦN 4</span>
+                                <span class="text-[11px] font-medium text-slate-400">Về đích</span>
+                            </div>
+                            <h4 class="font-bold text-slate-900 text-sm mb-1.5">Kiểm thử & Thuyết trình</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <strong>Mục tiêu:</strong> Kiểm thử chéo sửa lỗi vặt, hoàn thiện ứng dụng cá nhân và tự tin thuyết trình demo trước lớp.
+                            </p>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-200 text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-trophy"></i> Đầu ra: Demo sản phẩm (3–5p)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+                <div class="relative z-10 max-w-3xl">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-xs font-semibold mb-3">
+                        <i class="fa-solid fa-bullseye"></i> Mục tiêu Tuần 1
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold mb-3">Chốt ý tưởng ứng dụng & Tạo bản mẫu giao diện bằng AI</h2>
+                    <p class="text-indigo-100 text-sm sm:text-base leading-relaxed mb-6">
+                        Trong buổi học hôm nay, các em sẽ định hình sản phẩm cá nhân của riêng mình, sử dụng AI để phát triển tính năng và dùng <strong>Uizard</strong> để tạo 3 màn hình mẫu (Đăng nhập, Đăng ký, Màn hình chính) làm nền tảng thiết kế trên Qt Designer ở Tuần 2.
+                    </p>
+                    <button onclick="switchTab('idea')" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-indigo-700 font-bold text-sm hover:bg-indigo-50 transition shadow-md">
+                        Bắt đầu Bước 1: Lên ý tưởng <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="hidden lg:block absolute right-8 bottom-4 opacity-15 text-9xl">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 1: TẠO PROMPT AI (LÊN Ý TƯỞNG) ================= -->
+        <section id="panel-idea" class="tab-panel hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Column: Interactive Form -->
+                <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb text-amber-500"></i> Bước 1: Xây dựng ý tưởng ứng dụng
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">Chọn hoặc tự nhập thông tin bên dưới để hệ thống tạo câu lệnh (Prompt) chuẩn cho AI.</p>
+                    </div>
+
+                    <!-- Topic Input + Inspiration Chips -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">1. Chủ đề ứng dụng của em là gì?</label>
+                        <input type="text" id="input-topic" oninput="updatePrompts()" placeholder="VD: Quản lý thời gian học tập, Sổ tay chi tiêu..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm transition">
+                        
+                        <p class="text-xs font-medium text-slate-500 mt-2.5 mb-2">Gợi ý nhanh (Bấm để chọn):</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="selectTopic('Quản lý bài tập & thời gian học', 'student task and study planner')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-medium transition">📚 Quản lý bài tập</button>
+                            <button type="button" onclick="selectTopic('Quản lý chi tiêu cá nhân', 'personal expense tracker')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-medium transition">💰 Quản lý chi tiêu</button>
+                            <button type="button" onclick="selectTopic('Học từ vựng tiếng Anh Flashcard', 'English vocabulary flashcard learning')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-medium transition">🇬🇧 Học từ vựng</button>
+                            <button type="button" onclick="selectTopic('Nghe nhạc thư giãn tập trung', 'focus music player')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-medium transition">🎧 Nghe nhạc học bài</button>
+                            <button type="button" onclick="selectTopic('Đặt đồ ăn căn tin trường học', 'school canteen food ordering')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-medium transition">🍔 Đặt đồ ăn nhanh</button>
+                            <button type="button" onclick="selectTopic('Theo dõi thói quen & sức khỏe', 'daily habit and health tracker')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-medium transition">🏃 Theo dõi thói quen</button>
+                        </div>
+                    </div>
+
+                    <!-- Target Audience -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">2. Đối tượng sử dụng chính</label>
+                        <select id="input-audience" onchange="updatePrompts()" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm bg-white">
+                            <option value="Học sinh cấp 2, cấp 3">Học sinh cấp 2, cấp 3</option>
+                            <option value="Sinh viên đại học">Sinh viên đại học</option>
+                            <option value="Người đi làm bận rộn">Người đi làm bận rộn</option>
+                            <option value="Mọi người trong gia đình">Mọi người trong gia đình</option>
+                            <option value="Người yêu thích công nghệ / game thủ">Người yêu thích công nghệ / Game thủ</option>
+                        </select>
+                    </div>
+
+                    <!-- Design Style -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">3. Phong cách giao diện mong muốn</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="style" value="Tối giản, hiện đại (Minimalist)" data-en="minimalist, clean modern" checked onchange="updatePrompts()" class="peer sr-only">
+                                <div class="p-3 rounded-xl border border-slate-200 text-center text-xs font-semibold peer-checked:bg-indigo-50 peer-checked:border-indigo-500 peer-checked:text-indigo-700 hover:bg-slate-50 transition">
+                                    ✨ Tối giản
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="style" value="Nền tối chuyên nghiệp (Dark Mode)" data-en="sleek dark mode" onchange="updatePrompts()" class="peer sr-only">
+                                <div class="p-3 rounded-xl border border-slate-200 text-center text-xs font-semibold peer-checked:bg-indigo-50 peer-checked:border-indigo-500 peer-checked:text-indigo-700 hover:bg-slate-50 transition">
+                                    🌙 Dark Mode
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="style" value="Năng động, màu sắc tươi sáng" data-en="vibrant, energetic colorful" onchange="updatePrompts()" class="peer sr-only">
+                                <div class="p-3 rounded-xl border border-slate-200 text-center text-xs font-semibold peer-checked:bg-indigo-50 peer-checked:border-indigo-500 peer-checked:text-indigo-700 hover:bg-slate-50 transition">
+                                    ⚡ Năng động
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="style" value="Nhẹ nhàng, màu Pastel dễ thương" data-en="soft pastel, friendly" onchange="updatePrompts()" class="peer sr-only">
+                                <div class="p-3 rounded-xl border border-slate-200 text-center text-xs font-semibold peer-checked:bg-indigo-50 peer-checked:border-indigo-500 peer-checked:text-indigo-700 hover:bg-slate-50 transition">
+                                    🌸 Pastel
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Extra Feature (Optional) -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">4. Một tính năng nhỏ em thích ở Màn hình chính (Không bắt buộc)</label>
+                        <input type="text" id="input-feature" oninput="updatePrompts()" placeholder="VD: Hiện lời chào theo tên người dùng, danh sách việc cần làm..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm transition">
+                    </div>
+                </div>
+
+                <!-- Right Column: Generated AI Prompt -->
+                <div class="lg:col-span-5 flex flex-col gap-4">
+                    <div class="bg-slate-900 text-slate-100 rounded-2xl p-6 shadow-lg flex flex-col flex-grow justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-robot"></i> Prompt gợi ý cho ChatGPT / Gemini
+                                </span>
+                                <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">Tự động cập nhật</span>
+                            </div>
+                            <textarea id="ai-prompt-output" readonly rows="11" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl p-4 text-sm text-slate-200 leading-relaxed focus:outline-none resize-none font-mono"></textarea>
+                        </div>
+
+                        <div class="mt-4 space-y-2.5">
+                            <button onclick="copyTextFromElement('ai-prompt-output', 'Đã sao chép Prompt lên ý tưởng! Hãy dán vào ChatGPT hoặc Gemini.')" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-md">
+                                <i class="fa-regular fa-copy"></i> Sao chép Prompt này
+                            </button>
+                            <div class="grid grid-cols-2 gap-2">
+                                <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                    <i class="fa-solid fa-sparkles text-blue-400"></i> Mở Gemini
+                                </a>
+                                <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                    <i class="fa-solid fa-comment-dots text-emerald-400"></i> Mở ChatGPT
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Output Structured Collection Form -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-list text-emerald-600"></i> Form lưu kết quả phản hồi từ AI (Bản đặc tả dự án)
+                        </h3>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                            Chắt lọc và dán các phần quan trọng nhất từ câu trả lời của AI vào 5 mục dưới đây để làm tài liệu thiết kế cho Tuần 2 &amp; Tuần 3.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 self-start sm:self-center">
+                        <button type="button" onclick="fillSampleStudyFlow()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition border border-indigo-200">
+                            <i class="fa-solid fa-wand-sparkles"></i> Điền thử mẫu StudyFlow
+                        </button>
+                        <span id="ai-notes-status" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold">
+                            <i class="fa-regular fa-note-sticky"></i> Chưa nhập dữ liệu
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Section 1: App Identity & Style -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-indigo-600 flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 inline-flex items-center justify-center text-[11px]">1</span>
+                        Định danh &amp; Phong cách ứng dụng
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div class="md:col-span-4">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                                Tên ứng dụng chốt <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" id="ai-out-appname" oninput="handleAiFormInput()" placeholder="VD: StudyFlow" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm font-semibold transition">
+                        </div>
+                        <div class="md:col-span-4">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                                Phong cách thiết kế AI gợi ý
+                            </label>
+                            <input type="text" id="ai-out-style" oninput="handleAiFormInput()" placeholder="VD: Modern Student – Bright Blue" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm transition">
+                        </div>
+                        <div class="md:col-span-4">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                                Ý nghĩa / Mục tiêu ngắn gọn
+                            </label>
+                            <input type="text" id="ai-out-meaning" oninput="handleAiFormInput()" placeholder="VD: Dòng chảy học tập, quản lý bài tập & thời gian" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm transition">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Hex Colors Suggested by AI -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-pink-600 flex items-center gap-1.5">
+                            <span class="w-5 h-5 rounded-md bg-pink-100 text-pink-700 inline-flex items-center justify-center text-[11px]">2</span>
+                            Bảng màu giao diện (3 mã Hex AI đề xuất)
+                        </h4>
+                        <span class="text-[11px] text-slate-400 font-medium">Sẽ tự động đồng bộ khi bấm Lưu ở cuối form</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="flex items-center gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                            <span id="ai-swatch-primary" class="w-8 h-8 rounded-lg border border-slate-200 flex-shrink-0 shadow-inner" style="background-color: #5B7CFA;"></span>
+                            <div class="w-full">
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase">Màu chủ đạo (Nút, Điểm nhấn)</span>
+                                <input type="text" id="ai-out-hex-primary" oninput="handleAiFormInput()" placeholder="#5B7CFA" maxlength="7" class="w-full text-xs font-mono font-bold text-slate-700 uppercase outline-none">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                            <span id="ai-swatch-bg" class="w-8 h-8 rounded-lg border border-slate-200 flex-shrink-0 shadow-inner" style="background-color: #F4F7FF;"></span>
+                            <div class="w-full">
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase">Màu nền (Cửa sổ, Vùng làm việc)</span>
+                                <input type="text" id="ai-out-hex-bg" oninput="handleAiFormInput()" placeholder="#F4F7FF" maxlength="7" class="w-full text-xs font-mono font-bold text-slate-700 uppercase outline-none">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                            <span id="ai-swatch-text" class="w-8 h-8 rounded-lg border border-slate-200 flex-shrink-0 shadow-inner" style="background-color: #25304A;"></span>
+                            <div class="w-full">
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase">Màu chữ (Tiêu đề, Nội dung)</span>
+                                <input type="text" id="ai-out-hex-text" oninput="handleAiFormInput()" placeholder="#25304A" maxlength="7" class="w-full text-xs font-mono font-bold text-slate-700 uppercase outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: 3 Required Screens Specs (Tabbed for clean UX) -->
+                <div class="space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-violet-600 flex items-center gap-1.5">
+                            <span class="w-5 h-5 rounded-md bg-violet-100 text-violet-700 inline-flex items-center justify-center text-[11px]">3</span>
+                            Đặc tả 3 màn hình bắt buộc (Widget, Tên biến &amp; Bố cục)
+                        </h4>
+                        <div class="inline-flex bg-slate-100 p-1 rounded-xl gap-1 self-start sm:self-center">
+                            <button type="button" onclick="switchScreenSpecTab('login')" id="spec-tab-login" class="spec-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-indigo-700 shadow-sm">
+                                <i class="fa-solid fa-right-to-bracket mr-1"></i> 1. Login
+                            </button>
+                            <button type="button" onclick="switchScreenSpecTab('register')" id="spec-tab-register" class="spec-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+                                <i class="fa-solid fa-user-plus mr-1"></i> 2. Register
+                            </button>
+                            <button type="button" onclick="switchScreenSpecTab('home')" id="spec-tab-home" class="spec-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+                                <i class="fa-solid fa-house mr-1"></i> 3. Home / Dashboard
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Screen 1: Login -->
+                    <div id="spec-panel-login" class="spec-panel grid grid-cols-1 md:grid-cols-12 gap-4 bg-indigo-50/40 p-4 rounded-xl border border-indigo-100">
+                        <div class="md:col-span-7">
+                            <label class="block text-xs font-bold text-indigo-900 mb-1.5">
+                                Danh sách thành phần – Loại Widget Qt – Tên biến gợi ý (Login)
+                            </label>
+                            <textarea id="ai-out-login" rows="5" oninput="handleAiFormInput()" placeholder="Dán bảng hoặc danh sách từ AI, VD:&#10;- Logo & Tên app (QLabel: lblLogo, lblAppName)&#10;- Ô tài khoản & mật khẩu (QLineEdit: txtUsername, txtPassword)&#10;- Nút Đăng nhập (QPushButton: btnLogin) & Đăng ký (btnGoRegister)&#10;- Thông báo lỗi (QLabel: lblError)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm leading-relaxed font-mono transition"></textarea>
+                        </div>
+                        <div class="md:col-span-5">
+                            <label class="block text-xs font-bold text-indigo-900 mb-1.5">
+                                Ghi chú bố cục màn hình Đăng nhập
+                            </label>
+                            <textarea id="ai-out-login-layout" rows="5" oninput="handleAiFormInput()" placeholder="VD: Logo ở trên cùng, tiêu đề 'Chào mừng bạn trở lại!', 2 ô nhập căn giữa, nút Đăng nhập nổi bật, link Đăng ký ở dòng cuối." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm leading-relaxed transition"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Screen 2: Register -->
+                    <div id="spec-panel-register" class="spec-panel hidden grid grid-cols-1 md:grid-cols-12 gap-4 bg-violet-50/40 p-4 rounded-xl border border-violet-100">
+                        <div class="md:col-span-7">
+                            <label class="block text-xs font-bold text-violet-900 mb-1.5">
+                                Danh sách thành phần – Loại Widget Qt – Tên biến gợi ý (Register)
+                            </label>
+                            <textarea id="ai-out-register" rows="5" oninput="handleAiFormInput()" placeholder="Dán bảng hoặc danh sách từ AI, VD:&#10;- Họ tên, Tài khoản, Email (QLineEdit: txtFullName, txtUsername, txtEmail)&#10;- Mật khẩu & Xác nhận (QLineEdit: txtPassword, txtConfirmPassword)&#10;- Chọn cấp học (QComboBox: cboGrade) & Điều khoản (QCheckBox: chkTerms)&#10;- Nút Tạo tài khoản (btnRegister) & Quay lại (btnGoLogin)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-violet-500 outline-none text-xs sm:text-sm leading-relaxed font-mono transition"></textarea>
+                        </div>
+                        <div class="md:col-span-5">
+                            <label class="block text-xs font-bold text-violet-900 mb-1.5">
+                                Ghi chú bố cục màn hình Đăng ký
+                            </label>
+                            <textarea id="ai-out-register-layout" rows="5" oninput="handleAiFormInput()" placeholder="VD: Tiêu đề 'Tạo tài khoản mới', chia nhóm thông tin cá nhân và tài khoản, QComboBox chọn THCS/THPT, nút đăng ký đặt ở cuối." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-violet-500 outline-none text-xs sm:text-sm leading-relaxed transition"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Screen 3: Home / Dashboard -->
+                    <div id="spec-panel-home" class="spec-panel hidden grid grid-cols-1 md:grid-cols-12 gap-4 bg-emerald-50/40 p-4 rounded-xl border border-emerald-100">
+                        <div class="md:col-span-7">
+                            <label class="block text-xs font-bold text-emerald-900 mb-1.5">
+                                Các khu vực chức năng &amp; Widget chính (Sidebar, Header, Dashboard)
+                            </label>
+                            <textarea id="ai-out-home" rows="5" oninput="handleAiFormInput()" placeholder="VD:&#10;- Sidebar trái: btnHome, btnTasks, btnSchedule, btnTimer, btnLogout&#10;- Header trên: lblGreeting, lblDate, txtSearch, lblAvatar&#10;- Tổng quan: 4 thẻ QFrame (Bài tập, Hoàn thành, Thời gian, Mục tiêu)&#10;- Khu vực chính: QTableWidget (danh sách bài tập) + nút Thêm/Sửa/Xóa" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-emerald-500 outline-none text-xs sm:text-sm leading-relaxed font-mono transition"></textarea>
+                        </div>
+                        <div class="md:col-span-5">
+                            <label class="block text-xs font-bold text-emerald-900 mb-1.5">
+                                Bố cục / Cấu trúc dữ liệu hiển thị (VD: Các cột bảng)
+                            </label>
+                            <textarea id="ai-out-home-layout" rows="5" oninput="handleAiFormInput()" placeholder="VD: Chia 4 khu vực (Sidebar trái, Header trên, 4 thẻ Overview, Bảng bài tập có 4 cột: Môn học | Tên bài tập | Hạn nộp | Trạng thái)." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-emerald-500 outline-none text-xs sm:text-sm leading-relaxed transition"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Qt Designer Widgets Checklist -->
+                <div class="space-y-2.5">
+                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-sky-600 flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-md bg-sky-100 text-sky-700 inline-flex items-center justify-center text-[11px]">4</span>
+                        Các Widget Qt Designer dự kiến sử dụng (Tick chọn theo gợi ý của AI)
+                    </h4>
+                    <div class="flex flex-wrap gap-2" id="qt-widgets-group">
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QStackedWidget" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QStackedWidget</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QLineEdit" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QLineEdit</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QPushButton" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QPushButton</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QLabel" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QLabel</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QFrame" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QFrame</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QCheckBox" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QCheckBox</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QComboBox" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QComboBox</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QTableWidget" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QTableWidget</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QProgressBar" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QProgressBar</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QDateEdit" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QDateEdit</span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="QVBoxLayout / QHBoxLayout" onchange="handleAiFormInput()" class="qt-widget-chk peer sr-only">
+                            <span class="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono font-semibold text-slate-600 peer-checked:bg-sky-600 peer-checked:text-white peer-checked:border-sky-600 hover:bg-slate-100 transition">QVBoxLayout / QHBoxLayout</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Section 5: Feature Roadmap (3 Levels) -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-md bg-amber-100 text-amber-700 inline-flex items-center justify-center text-[11px]">5</span>
+                        Phân cấp tính năng sản phẩm (Giúp chia nhỏ công việc, không bị quá tải)
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200">
+                            <label class="block text-xs font-extrabold text-emerald-800 mb-1.5">
+                                <i class="fa-solid fa-star mr-1"></i> Mức 1 – Bắt buộc (Core)
+                            </label>
+                            <textarea id="ai-out-lvl1" rows="3" oninput="handleAiFormInput()" placeholder="VD: Đăng nhập, Đăng ký, Chuyển màn hình, Trang chủ, Thêm/Sửa/Xóa bài tập." class="w-full px-3 py-2 rounded-lg border border-emerald-200 bg-white focus:ring-2 focus:ring-emerald-500 outline-none text-xs leading-relaxed transition"></textarea>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200">
+                            <label class="block text-xs font-extrabold text-amber-800 mb-1.5">
+                                <i class="fa-solid fa-rocket mr-1"></i> Mức 2 – Mở rộng (Bonus)
+                            </label>
+                            <textarea id="ai-out-lvl2" rows="3" oninput="handleAiFormInput()" placeholder="VD: Quản lý hạn nộp, Bộ lọc trạng thái, Thời khóa biểu, Đồng hồ Pomodoro." class="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white focus:ring-2 focus:ring-amber-500 outline-none text-xs leading-relaxed transition"></textarea>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200">
+                            <label class="block text-xs font-extrabold text-purple-800 mb-1.5">
+                                <i class="fa-solid fa-crown mr-1"></i> Mức 3 – Nâng cao (Pro)
+                            </label>
+                            <textarea id="ai-out-lvl3" rows="3" oninput="handleAiFormInput()" placeholder="VD: Thống kê thời gian học, Biểu đồ tiến độ, Lưu dữ liệu bằng SQLite." class="w-full px-3 py-2 rounded-lg border border-purple-200 bg-white focus:ring-2 focus:ring-purple-500 outline-none text-xs leading-relaxed transition"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Footer -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                    <span id="ai-notes-count" class="text-xs text-slate-400 font-medium">Đã điền 0/7 mục chính • Tự động lưu trên trình duyệt</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="clearAiNotes()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-semibold flex items-center gap-1.5 transition">
+                            <i class="fa-regular fa-trash-can"></i> Xóa form
+                        </button>
+                        <button type="button" onclick="saveAiNotesExplicit()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition">
+                            <i class="fa-solid fa-floppy-disk"></i> Lưu &amp; Đồng bộ sang Bước 2, 3 <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: THIẾT KẾ MẪU UIZARD & BẢNG MÀU QT ================= -->
+        <section id="panel-uizard" class="tab-panel hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Column: Uizard Prompt & Instructions -->
+                <div class="lg:col-span-6 space-y-5">
+                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                        <div>
+                            <h2 class="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles text-violet-600"></i> Bước 2: Tạo giao diện mẫu với Uizard
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">Uizard Autodesigner hoạt động tốt nhất bằng tiếng Anh. Hệ thống tự động tạo câu lệnh tiếng Anh cho em bên dưới.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1.5">Chủ đề ứng dụng (Tiếng Anh)</label>
+                            <input type="text" id="input-topic-en" oninput="updateUizardPrompt()" placeholder="VD: student task and study planner, personal expense tracker..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-sm transition">
+
+                            <p class="text-xs font-medium text-slate-500 mt-2.5 mb-2">Gợi ý nhanh bằng tiếng Anh (Bấm để chọn):</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" onclick="selectTopicEn('Quản lý bài tập & thời gian học', 'student task and study planner')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-xs font-medium transition">📚 Student task &amp; study planner</button>
+                                <button type="button" onclick="selectTopicEn('Quản lý chi tiêu cá nhân', 'personal expense tracker')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-xs font-medium transition">💰 Personal expense tracker</button>
+                                <button type="button" onclick="selectTopicEn('Học từ vựng tiếng Anh Flashcard', 'English vocabulary flashcard learning')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-xs font-medium transition">🇬🇧 English vocabulary flashcard</button>
+                                <button type="button" onclick="selectTopicEn('Nghe nhạc thư giãn tập trung', 'focus music player')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-xs font-medium transition">🎧 Focus music player</button>
+                                <button type="button" onclick="selectTopicEn('Đặt đồ ăn căn tin trường học', 'school canteen food ordering')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-xs font-medium transition">🍔 School canteen food ordering</button>
+                                <button type="button" onclick="selectTopicEn('Theo dõi thói quen & sức khỏe', 'daily habit and health tracker')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-violet-100 hover:text-violet-700 text-xs font-medium transition">🏃 Daily habit &amp; health tracker</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="text-sm font-bold text-slate-700">Prompt tiếng Anh cho Uizard Autodesigner</label>
+                                <span class="text-[11px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Tự đồng bộ màu & phong cách</span>
+                            </div>
+                            <textarea id="uizard-prompt-output" readonly rows="5" class="w-full bg-slate-900 text-slate-100 border border-slate-700 rounded-xl p-4 text-sm leading-relaxed focus:outline-none resize-none font-mono"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <button type="button" onclick="copyTextFromElement('uizard-prompt-output', 'Đã sao chép Prompt Uizard! Hãy dán vào Uizard Autodesigner.')" class="py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm">
+                                <i class="fa-regular fa-copy"></i> Sao chép Prompt
+                            </button>
+                            <a href="https://uizard.io/" target="_blank" rel="noopener noreferrer" class="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Mở Uizard.io
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Important Technical Notes for Qt Designer -->
+                    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-2.5">
+                        <h3 class="text-sm font-extrabold text-amber-900 flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Lưu ý quan trọng khi tạo mẫu trên Uizard
+                        </h3>
+                        <ul class="text-xs sm:text-sm text-amber-900/90 space-y-1.5 list-disc pl-5">
+                            <li>Chọn khung màn hình <strong>Desktop / Web</strong> (không chọn Mobile) để tỷ lệ khớp với cửa sổ phần mềm trên Qt Designer.</li>
+                            <li>Đảm bảo có đủ 3 màn hình cơ bản: <strong>Đăng nhập (Login)</strong>, <strong>Đăng ký (Register)</strong> và <strong>Màn hình chính (Home)</strong>.</li>
+                            <li>Ưu tiên bố cục gọn gàng, nút bấm rõ ràng, tránh các biểu đồ 3D hoặc hiệu ứng phức tạp khó làm lại bằng QSS ở Tuần 2.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Right Column: Live Qt Color Palette Simulator -->
+                <div class="lg:col-span-6 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between space-y-5">
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-palette text-pink-500"></i> Thử nghiệm Bảng màu Hex cho Qt Designer
+                            </h3>
+                            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Nhập mã màu Hex AI đã gợi ý để xem trước màn hình <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600">login.ui</code> sẽ trông như thế nào.</p>
+                        </div>
+
+                        <!-- Quick Preset Palettes -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-xs font-semibold text-slate-500">Mẫu nhanh:</span>
+                            <button type="button" onclick="applyPalette('#4F46E5', '#F1F5F9', '#1E293B')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition">Indigo Sáng</button>
+                            <button type="button" onclick="applyPalette('#10B981', '#ECFDF5', '#064E3B')" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition">Xanh Ngọc</button>
+                            <button type="button" onclick="applyPalette('#F59E0B', '#FFFBEB', '#451A03')" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold transition">Vàng Năng Động</button>
+                            <button type="button" onclick="applyPalette('#38BDF8', '#0F172A', '#0F172A')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-semibold transition">Dark Tech</button>
+                        </div>
+
+                        <!-- Color Inputs -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Màu chủ đạo (Nút)</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="color-primary" value="#4f46e5" oninput="updateColorPreview()" class="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent">
+                                    <input type="text" id="hex-primary" value="#4F46E5" oninput="syncHexToPicker('primary')" maxlength="7" class="w-full px-2 py-1.5 text-xs font-mono font-bold uppercase rounded-lg border border-slate-300 bg-white">
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Màu nền cửa sổ</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="color-bg" value="#f1f5f9" oninput="updateColorPreview()" class="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent">
+                                    <input type="text" id="hex-bg" value="#F1F5F9" oninput="syncHexToPicker('bg')" maxlength="7" class="w-full px-2 py-1.5 text-xs font-mono font-bold uppercase rounded-lg border border-slate-300 bg-white">
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Màu tiêu đề chữ</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="color-text" value="#1e293b" oninput="updateColorPreview()" class="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent">
+                                    <input type="text" id="hex-text" value="#1E293B" oninput="syncHexToPicker('text')" maxlength="7" class="w-full px-2 py-1.5 text-xs font-mono font-bold uppercase rounded-lg border border-slate-300 bg-white">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Simulated Qt Window Preview -->
+                        <div class="rounded-2xl overflow-hidden border border-slate-300 shadow-inner">
+                            <div class="bg-slate-200 px-3 py-2 flex items-center justify-between border-b border-slate-300">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                                </div>
+                                <span class="text-[11px] font-mono font-semibold text-slate-600">login.ui — Qt Preview</span>
+                                <span class="w-8"></span>
+                            </div>
+                            <div id="qt-preview-bg" class="p-6 flex items-center justify-center transition-colors duration-200" style="background-color: #f1f5f9;">
+                                <div class="w-full max-w-xs bg-white rounded-2xl p-5 shadow-md border border-slate-100 space-y-3">
+                                    <div class="text-center">
+                                        <h4 id="qt-preview-title" class="text-base font-extrabold" style="color: #1e293b;">Đăng nhập hệ thống</h4>
+                                        <p class="text-[11px] text-slate-400">Chào mừng bạn quay trở lại</p>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-400">Tên đăng nhập...</div>
+                                        <div class="px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-400">••••••••</div>
+                                    </div>
+                                    <div id="qt-preview-btn" class="w-full py-2 rounded-lg text-center text-xs font-bold text-white shadow-sm transition-colors duration-200" style="background-color: #4f46e5;">
+                                        Đăng nhập
+                                    </div>
+                                    <p class="text-center text-[11px] text-slate-500">
+                                        Chưa có tài khoản? <span id="qt-preview-link" class="font-bold underline" style="color: #4f46e5;">Đăng ký ngay</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="switchTab('deliverable')" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm">
+                        Đã xong ảnh Uizard? Sang Bước 3 (PROJECT BRIEF) <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: PROJECT BRIEF TUẦN 1 ================= -->
+        <section id="panel-deliverable" class="tab-panel hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <!-- Left Column: Brief Inputs, Uizard Mockup Uploads & Checklist -->
+                <div id="brief-editor-col" class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-file-signature text-indigo-600"></i> Bước 3: Hoàn thiện PROJECT BRIEF
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">Điền thông tin, đính kèm 3 ảnh Uizard và kiểm tra checklist để hoàn chỉnh hồ sơ dự án Tuần 1.</p>
+                    </div>
+
+                    <!-- Basic Project Info -->
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Họ và tên học sinh</label>
+                                <input type="text" id="student-name" oninput="updateSubmissionSummary()" placeholder="VD: Nguyễn Minh Khang" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Tên ứng dụng đã chốt</label>
+                                <input type="text" id="app-name" oninput="updateSubmissionSummary()" placeholder="VD: StudyFlow" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Mô tả ngắn gọn về ứng dụng (1–2 câu)</label>
+                            <textarea id="app-desc" rows="2" oninput="updateSubmissionSummary()" placeholder="VD: Ứng dụng giúp học sinh quản lý bài tập, thời gian học và nhắc lịch ôn thi." class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Attach 3 Uizard Mockup Screenshots -->
+                    <div class="pt-3 border-t border-slate-200 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                                <i class="fa-regular fa-images text-violet-600"></i> Đính kèm 3 ảnh mẫu Uizard
+                            </h3>
+                            <span class="text-[11px] text-slate-400">Hiển thị trực tiếp trên Brief</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2.5">
+                            <!-- Login Upload -->
+                            <div class="relative">
+                                <input type="file" id="upload-login" accept="image/*" onchange="handleMockupUpload('login', this)" class="hidden">
+                                <label for="upload-login" id="upload-box-login" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 cursor-pointer transition text-center min-h-[82px]">
+                                    <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-base mb-1"></i>
+                                    <span class="text-[11px] font-bold text-slate-600">1. Login</span>
+                                    <span class="text-[10px] text-slate-400">Chọn ảnh</span>
+                                </label>
+                                <button type="button" id="remove-img-login" onclick="removeMockupImage('login')" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[10px] flex items-center justify-center shadow">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <!-- Register Upload -->
+                            <div class="relative">
+                                <input type="file" id="upload-register" accept="image/*" onchange="handleMockupUpload('register', this)" class="hidden">
+                                <label for="upload-register" id="upload-box-register" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 cursor-pointer transition text-center min-h-[82px]">
+                                    <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-base mb-1"></i>
+                                    <span class="text-[11px] font-bold text-slate-600">2. Register</span>
+                                    <span class="text-[10px] text-slate-400">Chọn ảnh</span>
+                                </label>
+                                <button type="button" id="remove-img-register" onclick="removeMockupImage('register')" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[10px] flex items-center justify-center shadow">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <!-- Home Upload -->
+                            <div class="relative">
+                                <input type="file" id="upload-home" accept="image/*" onchange="handleMockupUpload('home', this)" class="hidden">
+                                <label for="upload-home" id="upload-box-home" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 cursor-pointer transition text-center min-h-[82px]">
+                                    <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-base mb-1"></i>
+                                    <span class="text-[11px] font-bold text-slate-600">3. Home</span>
+                                    <span class="text-[10px] text-slate-400">Chọn ảnh</span>
+                                </label>
+                                <button type="button" id="remove-img-home" onclick="removeMockupImage('home')" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[10px] flex items-center justify-center shadow">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Checklist -->
+                    <div class="pt-3 border-t border-slate-200 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-extrabold text-slate-800">Checklist PROJECT BRIEF Tuần 1</h3>
+                            <span id="checklist-progress" class="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700">0 / 5 hoàn thành</span>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="checkbox" onchange="updateSubmissionSummary()" class="deliverable-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                                <span class="text-xs sm:text-sm text-slate-700 font-medium">1. Đã chốt tên ứng dụng &amp; chủ đề cá nhân</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="checkbox" onchange="updateSubmissionSummary()" class="deliverable-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                                <span class="text-xs sm:text-sm text-slate-700 font-medium">2. Đã chọn bảng màu Hex đồng bộ (Chủ đạo, Nền, Chữ)</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="checkbox" onchange="updateSubmissionSummary()" class="deliverable-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                                <span class="text-xs sm:text-sm text-slate-700 font-medium">3. Đã có giao diện mẫu <strong>Đăng nhập (Login)</strong> từ Uizard</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="checkbox" onchange="updateSubmissionSummary()" class="deliverable-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                                <span class="text-xs sm:text-sm text-slate-700 font-medium">4. Đã có giao diện mẫu <strong>Đăng ký (Register)</strong> từ Uizard</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                                <input type="checkbox" onchange="updateSubmissionSummary()" class="deliverable-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                                <span class="text-xs sm:text-sm text-slate-700 font-medium">5. Đã có giao diện mẫu <strong>Màn hình chính (Home)</strong> từ Uizard</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Real Interactive Visual PROJECT BRIEF Document -->
+                <div id="brief-preview-col" class="lg:col-span-7 space-y-4">
+                    <!-- Export Action Bar -->
+                    <div id="brief-action-bar" class="bg-slate-900 text-white rounded-2xl p-3.5 sm:px-5 flex flex-wrap items-center justify-between gap-3 shadow-md">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                            <span class="text-xs sm:text-sm font-bold tracking-wide">Bản xem trước PROJECT BRIEF</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" onclick="copyProjectBriefText()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition">
+                                <i class="fa-regular fa-copy"></i> Sao chép text
+                            </button>
+                            <button type="button" onclick="downloadProjectBriefHtml()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
+                                <i class="fa-solid fa-file-code"></i> Tải file (.html)
+                            </button>
+                            <button type="button" onclick="printProjectBrief()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
+                                <i class="fa-solid fa-file-pdf"></i> Xuất PDF / In Brief
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Actual Printable / Exportable Document Sheet -->
+                    <article id="brief-document-sheet" class="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
+                        <!-- Dynamic Color Accent Top Bar -->
+                        <div id="brief-accent-bar" class="h-2.5 w-full transition-colors duration-200" style="background-color: #4f46e5;"></div>
+
+                        <div class="p-6 sm:p-8 space-y-6">
+                            <!-- Document Header -->
+                            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-slate-200">
+                                <div class="space-y-1.5">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="px-2.5 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-widest">PROJECT BRIEF</span>
+                                        <span class="text-xs font-semibold text-slate-400">App Producer Advanced • Tuần 1</span>
+                                    </div>
+                                    <h2 id="brief-view-appname" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Tên ứng dụng của bạn</h2>
+                                    <p id="brief-view-desc" class="text-sm text-slate-600 leading-relaxed">Mô tả ngắn gọn về ý tưởng và mục tiêu của ứng dụng sẽ hiển thị tại đây.</p>
+                                </div>
+                                <div class="sm:text-right flex-shrink-0 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 space-y-1">
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tác giả dự án</div>
+                                    <div id="brief-view-student" class="text-sm font-extrabold text-slate-800">Chưa nhập họ tên</div>
+                                    <div id="brief-view-date" class="text-[11px] text-slate-500"></div>
+                                </div>
+                            </div>
+
+                            <!-- Key Metadata Pills -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                                    <span class="block text-[10px] font-bold uppercase text-slate-400">Chủ đề dự án</span>
+                                    <span id="brief-view-topic" class="text-xs sm:text-sm font-bold text-slate-800 mt-0.5 block">Chưa chọn chủ đề</span>
+                                </div>
+                                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                                    <span class="block text-[10px] font-bold uppercase text-slate-400">Đối tượng sử dụng</span>
+                                    <span id="brief-view-audience" class="text-xs sm:text-sm font-bold text-slate-800 mt-0.5 block">Học sinh cấp 2, cấp 3</span>
+                                </div>
+                                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                                    <span class="block text-[10px] font-bold uppercase text-slate-400">Phong cách thiết kế</span>
+                                    <span id="brief-view-style" class="text-xs sm:text-sm font-bold text-slate-800 mt-0.5 block">Tối giản, hiện đại</span>
+                                </div>
+                            </div>
+
+                            <!-- 1. Brand Color System -->
+                            <div class="space-y-2.5">
+                                <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-palette text-pink-500"></i> 1. Hệ thống màu sắc giao diện (Brand Colors)
+                                </h3>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <div class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-white">
+                                        <span id="brief-swatch-primary" class="w-9 h-9 rounded-lg border border-slate-200 flex-shrink-0 shadow-sm" style="background-color: #4f46e5;"></span>
+                                        <div class="min-w-0">
+                                            <span class="block text-[10px] font-bold text-slate-400 uppercase">Chủ đạo</span>
+                                            <span id="brief-hex-primary" class="text-xs font-mono font-extrabold text-slate-800">#4F46E5</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-white">
+                                        <span id="brief-swatch-bg" class="w-9 h-9 rounded-lg border border-slate-200 flex-shrink-0 shadow-sm" style="background-color: #f1f5f9;"></span>
+                                        <div class="min-w-0">
+                                            <span class="block text-[10px] font-bold text-slate-400 uppercase">Màu nền</span>
+                                            <span id="brief-hex-bg" class="text-xs font-mono font-extrabold text-slate-800">#F1F5F9</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-white">
+                                        <span id="brief-swatch-text" class="w-9 h-9 rounded-lg border border-slate-200 flex-shrink-0 shadow-sm" style="background-color: #1e293b;"></span>
+                                        <div class="min-w-0">
+                                            <span class="block text-[10px] font-bold text-slate-400 uppercase">Màu chữ</span>
+                                            <span id="brief-hex-text" class="text-xs font-mono font-extrabold text-slate-800">#1E293B</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Uizard UI Mockups Gallery -->
+                            <div class="space-y-2.5">
+                                <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <i class="fa-regular fa-images text-violet-600"></i> 2. Giao diện mẫu Uizard (UI Mockups)
+                                </h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                                        <div id="brief-img-slot-login" class="aspect-video flex flex-col items-center justify-center text-slate-400 p-3 text-center">
+                                            <i class="fa-regular fa-image text-xl mb-1 opacity-50"></i>
+                                            <span class="text-[11px]">Chưa đính kèm ảnh</span>
+                                        </div>
+                                        <div class="px-3 py-1.5 bg-white border-t border-slate-200 text-[11px] font-bold text-slate-700 text-center">Màn hình 1: Login</div>
+                                    </div>
+                                    <div class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                                        <div id="brief-img-slot-register" class="aspect-video flex flex-col items-center justify-center text-slate-400 p-3 text-center">
+                                            <i class="fa-regular fa-image text-xl mb-1 opacity-50"></i>
+                                            <span class="text-[11px]">Chưa đính kèm ảnh</span>
+                                        </div>
+                                        <div class="px-3 py-1.5 bg-white border-t border-slate-200 text-[11px] font-bold text-slate-700 text-center">Màn hình 2: Register</div>
+                                    </div>
+                                    <div class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                                        <div id="brief-img-slot-home" class="aspect-video flex flex-col items-center justify-center text-slate-400 p-3 text-center">
+                                            <i class="fa-regular fa-image text-xl mb-1 opacity-50"></i>
+                                            <span class="text-[11px]">Chưa đính kèm ảnh</span>
+                                        </div>
+                                        <div class="px-3 py-1.5 bg-white border-t border-slate-200 text-[11px] font-bold text-slate-700 text-center">Màn hình 3: Home</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Screen Specifications & Qt Architecture (Dynamic from Step 1) -->
+                            <div id="brief-specs-section" class="space-y-3">
+                                <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-layer-group text-indigo-600"></i> 3. Đặc tả màn hình &amp; Kiến trúc Qt Designer
+                                </h3>
+                                <div id="brief-view-screens" class="space-y-2.5 text-xs text-slate-700">
+                                    <p class="text-slate-400 italic">Chưa có dữ liệu đặc tả màn hình. Hãy điền Form kết quả AI ở Bước 1 để hiển thị chi tiết tại đây.</p>
+                                </div>
+                                <div id="brief-view-widgets" class="flex flex-wrap gap-1.5 pt-1"></div>
+                            </div>
+
+                            <!-- 4. Feature Roadmap (3 Levels) -->
+                            <div id="brief-roadmap-section" class="space-y-2.5">
+                                <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-road text-amber-500"></i> 4. Lộ trình tính năng sản phẩm (Feature Roadmap)
+                                </h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                                        <span class="block text-[11px] font-extrabold text-emerald-800 mb-1">Mức 1 – Bắt buộc</span>
+                                        <p id="brief-view-lvl1" class="text-xs text-slate-700 leading-relaxed">Đăng nhập, Đăng ký, Chuyển màn hình, Trang chủ.</p>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200">
+                                        <span class="block text-[11px] font-extrabold text-amber-800 mb-1">Mức 2 – Mở rộng</span>
+                                        <p id="brief-view-lvl2" class="text-xs text-slate-700 leading-relaxed text-slate-400 italic">Chưa bổ sung</p>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-purple-50/70 border border-purple-200">
+                                        <span class="block text-[11px] font-extrabold text-purple-800 mb-1">Mức 3 – Nâng cao</span>
+                                        <p id="brief-view-lvl3" class="text-xs text-slate-700 leading-relaxed text-slate-400 italic">Chưa bổ sung</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Footer Readiness Status -->
+                            <div class="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                <span class="text-slate-500 font-medium">Trạng thái hoàn thiện Tuần 1:</span>
+                                <span id="brief-view-status" class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 font-bold">0 / 5 tiêu chí đạt</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Hidden textarea kept for clean plain-text copy -->
+                    <textarea id="submission-output" class="sr-only" aria-hidden="true"></textarea>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p>Khóa học <strong>App Producer Advanced</strong> (Qt Designer + Python) • Dữ liệu tự động lưu trên trình duyệt.</p>
+            <button onclick="clearSavedData()" class="text-slate-400 hover:text-rose-600 transition underline">Đặt lại dữ liệu trang</button>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // ==========================================
+        // 1. STATE & LOCALSTORAGE PERSISTENCE
+        // ==========================================
+        const STORAGE_KEY = 'app_producer_advanced_week1_v2';
+
+        function saveState() {
+            try {
+                const styleRadio = document.querySelector('input[name="style"]:checked');
+                const chks = Array.from(document.querySelectorAll('.deliverable-chk')).map(c => c.checked);
+                const state = {
+                    topic: document.getElementById('input-topic')?.value || '',
+                    topicEn: document.getElementById('input-topic-en')?.value || '',
+                    audience: document.getElementById('input-audience')?.value || '',
+                    style: styleRadio ? styleRadio.value : '',
+                    feature: document.getElementById('input-feature')?.value || '',
+                    colorPrimary: document.getElementById('color-primary')?.value || '#4f46e5',
+                    colorBg: document.getElementById('color-bg')?.value || '#f1f5f9',
+                    colorText: document.getElementById('color-text')?.value || '#1e293b',
+                    studentName: document.getElementById('student-name')?.value || '',
+                    appName: document.getElementById('app-name')?.value || '',
+                    appDesc: document.getElementById('app-desc')?.value || '',
+                    aiForm: getAiFormData(),
+                    checkboxes: chks
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (err) {
+                console.warn('Không thể lưu dữ liệu vào localStorage:', err);
+            }
+        }
+
+        // ==========================================
+        // 6. PROJECT BRIEF RENDERING, MOCKUPS & EXPORT
+        // ==========================================
+        const briefMockupImages = {
+            login: null,
+            register: null,
+            home: null
+        };
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function handleMockupUpload(slot, inputEl) {
+            const file = inputEl?.files?.[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast('Vui lòng chọn tệp hình ảnh (.png, .jpg, .webp).', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                briefMockupImages[slot] = e.target.result;
+                renderMockupSlot(slot);
+
+                // Auto-check corresponding checklist item (2: login, 3: register, 4: home)
+                const chkIndexMap = { login: 2, register: 3, home: 4 };
+                const chks = document.querySelectorAll('.deliverable-chk');
+                if (chks[chkIndexMap[slot]]) {
+                    chks[chkIndexMap[slot]].checked = true;
+                }
+                updateSubmissionSummary();
+                showToast(`Đã đính kèm ảnh màn hình ${slot.toUpperCase()} vào PROJECT BRIEF!`, 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeMockupImage(slot) {
+            briefMockupImages[slot] = null;
+            const inputEl = document.getElementById(`upload-${slot}`);
+            if (inputEl) inputEl.value = '';
+            renderMockupSlot(slot);
+            showToast(`Đã gỡ ảnh màn hình ${slot.toUpperCase()}.`, 'info');
+        }
+
+        function renderMockupSlot(slot) {
+            const imgData = briefMockupImages[slot];
+            const uploadBox = document.getElementById(`upload-box-${slot}`);
+            const removeBtn = document.getElementById(`remove-img-${slot}`);
+            const briefSlot = document.getElementById(`brief-img-slot-${slot}`);
+            const labelMap = { login: '1. Login', register: '2. Register', home: '3. Home' };
+
+            if (imgData) {
+                if (uploadBox) {
+                    uploadBox.className = 'relative block rounded-xl border-2 border-emerald-400 overflow-hidden cursor-pointer min-h-[82px] bg-slate-100';
+                    uploadBox.innerHTML = `<img src="${imgData}" alt="${slot}" class="w-full h-[82px] object-cover">`;
+                }
+                if (removeBtn) removeBtn.classList.remove('hidden');
+                if (briefSlot) {
+                    briefSlot.innerHTML = `<img src="${imgData}" alt="Uizard ${slot}" class="w-full h-full object-cover">`;
+                }
+            } else {
+                if (uploadBox) {
+                    uploadBox.className = 'flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 cursor-pointer transition text-center min-h-[82px]';
+                    uploadBox.innerHTML = `<i class="fa-solid fa-cloud-arrow-up text-slate-400 text-base mb-1"></i><span class="text-[11px] font-bold text-slate-600">${labelMap[slot]}</span><span class="text-[10px] text-slate-400">Chọn ảnh</span>`;
+                }
+                if (removeBtn) removeBtn.classList.add('hidden');
+                if (briefSlot) {
+                    briefSlot.innerHTML = `<i class="fa-regular fa-image text-xl mb-1 opacity-50"></i><span class="text-[11px]">Chưa đính kèm ảnh</span>`;
+                }
+            }
+        }
+
+        function updateSubmissionSummary() {
+            const outputEl = document.getElementById('submission-output');
+            const aiData = getAiFormData();
+
+            const studentName = (document.getElementById('student-name')?.value || '').trim();
+            const appName = (document.getElementById('app-name')?.value || '').trim() || aiData.appName;
+            const topic = (document.getElementById('input-topic')?.value || '').trim();
+            const audience = document.getElementById('input-audience')?.value || 'Học sinh cấp 2, cấp 3';
+            const styleRadio = document.querySelector('input[name="style"]:checked');
+            const designStyle = aiData.style || (styleRadio ? styleRadio.value : 'Tối giản, hiện đại');
+            const appDesc = (document.getElementById('app-desc')?.value || '').trim() || aiData.meaning;
+
+            const primary = (document.getElementById('hex-primary')?.value || '#4F46E5').toUpperCase();
+            const bg = (document.getElementById('hex-bg')?.value || '#F1F5F9').toUpperCase();
+            const text = (document.getElementById('hex-text')?.value || '#1E293B').toUpperCase();
+
+            const chks = document.querySelectorAll('.deliverable-chk');
+            const doneCount = Array.from(chks).filter(c => c.checked).length;
+
+            // Update Checklist Progress Badge
+            const progressEl = document.getElementById('checklist-progress');
+            if (progressEl) {
+                progressEl.textContent = `${doneCount} / ${chks.length} hoàn thành`;
+                progressEl.className = doneCount === chks.length
+                    ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700'
+                    : 'text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700';
+            }
+
+            // Update Visual PROJECT BRIEF Document
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+
+            const accentBar = document.getElementById('brief-accent-bar');
+            if (accentBar) accentBar.style.backgroundColor = primary;
+
+            setText('brief-view-appname', appName || 'Tên ứng dụng của bạn');
+            setText('brief-view-desc', appDesc || 'Mô tả ngắn gọn về ý tưởng và mục tiêu của ứng dụng sẽ hiển thị tại đây.');
+            setText('brief-view-student', studentName || 'Chưa nhập họ tên');
+            setText('brief-view-date', new Date().toLocaleDateString('vi-VN'));
+            setText('brief-view-topic', topic || 'Chưa chọn chủ đề');
+            setText('brief-view-audience', audience);
+            setText('brief-view-style', designStyle);
+
+            // Brand colors on brief
+            const swPrimary = document.getElementById('brief-swatch-primary');
+            const swBg = document.getElementById('brief-swatch-bg');
+            const swText = document.getElementById('brief-swatch-text');
+            if (swPrimary) swPrimary.style.backgroundColor = primary;
+            if (swBg) swBg.style.backgroundColor = bg;
+            if (swText) swText.style.backgroundColor = text;
+            setText('brief-hex-primary', primary);
+            setText('brief-hex-bg', bg);
+            setText('brief-hex-text', text);
+
+            // Screens Specs on brief
+            const screensContainer = document.getElementById('brief-view-screens');
+            if (screensContainer) {
+                const screenBlocks = [
+                    { title: 'Màn hình 1: Đăng nhập (Login)', color: 'border-indigo-200 bg-indigo-50/40', titleColor: 'text-indigo-800', widgets: aiData.login, layout: aiData.loginLayout },
+                    { title: 'Màn hình 2: Đăng ký (Register)', color: 'border-violet-200 bg-violet-50/40', titleColor: 'text-violet-800', widgets: aiData.register, layout: aiData.registerLayout },
+                    { title: 'Màn hình 3: Trang chủ (Home/Dashboard)', color: 'border-emerald-200 bg-emerald-50/40', titleColor: 'text-emerald-800', widgets: aiData.home, layout: aiData.homeLayout }
+                ].filter(b => b.widgets || b.layout);
+
+                if (screenBlocks.length > 0) {
+                    screensContainer.innerHTML = screenBlocks.map(b => `
+                        <div class="p-3.5 rounded-xl border ${b.color} space-y-1.5">
+                            <div class="font-extrabold ${b.titleColor}">${b.title}</div>
+                            ${b.widgets ? `<pre class="whitespace-pre-wrap font-mono text-[11px] text-slate-700 leading-relaxed">${escapeHtml(b.widgets)}</pre>` : ''}
+                            ${b.layout ? `<p class="text-[11px] text-slate-600 pt-1 border-t border-slate-200/70"><strong>Bố cục:</strong> ${escapeHtml(b.layout)}</p>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    screensContainer.innerHTML = `<p class="text-slate-400 italic">Chưa có dữ liệu đặc tả màn hình. Hãy điền Form kết quả AI ở Bước 1 để hiển thị chi tiết tại đây.</p>`;
+                }
+            }
+
+            // Qt Widgets tags on brief
+            const widgetsContainer = document.getElementById('brief-view-widgets');
+            if (widgetsContainer) {
+                if (aiData.widgets && aiData.widgets.length > 0) {
+                    widgetsContainer.innerHTML = aiData.widgets.map(w =>
+                        `<span class="px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 font-mono text-[11px] font-bold">${escapeHtml(w)}</span>`
+                    ).join('');
+                } else {
+                    widgetsContainer.innerHTML = '';
+                }
+            }
+
+            // Roadmap levels on brief
+            const setRoadmapEl = (id, val, fallback) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (val) {
+                    el.textContent = val;
+                    el.className = 'text-xs text-slate-700 leading-relaxed';
+                } else {
+                    el.textContent = fallback;
+                    el.className = 'text-xs text-slate-400 italic leading-relaxed';
+                }
+            };
+            setRoadmapEl('brief-view-lvl1', aiData.lvl1, 'Đăng nhập, Đăng ký, Chuyển màn hình, Trang chủ.');
+            setRoadmapEl('brief-view-lvl2', aiData.lvl2, 'Chưa bổ sung');
+            setRoadmapEl('brief-view-lvl3', aiData.lvl3, 'Chưa bổ sung');
+
+            // Footer status badge
+            const statusEl = document.getElementById('brief-view-status');
+            if (statusEl) {
+                statusEl.textContent = doneCount === chks.length
+                    ? `Sẵn sàng nộp bài (${doneCount}/${chks.length} tiêu chí đạt)`
+                    : `${doneCount} / ${chks.length} tiêu chí đạt`;
+                statusEl.className = doneCount === chks.length
+                    ? 'px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold'
+                    : 'px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 font-bold';
+            }
+
+            // Keep plain-text version synced in hidden textarea for Copy Text button
+            if (outputEl) {
+                const aiNotes = buildAiFormSummaryText();
+                const aiNotesSection = aiNotes ? `\n\n4. ĐẶC TẢ CHI TIẾT TỪ AI:\n${aiNotes}` : '';
+                outputEl.value = `=== PROJECT BRIEF - TUẦN 1 ===
+Khóa học: App Producer Advanced (Qt Designer + Python)
+Học sinh: ${studentName || '[Chưa nhập họ tên]'}
+
+1. THÔNG TIN DỰ ÁN:
+- Tên ứng dụng: ${appName || '[Chưa chốt tên ứng dụng]'}
+- Chủ đề: ${topic || '[Chưa nhập chủ đề]'}
+- Đối tượng: ${audience}
+- Phong cách: ${designStyle}
+- Mô tả: ${appDesc || '[Chưa nhập mô tả ngắn]'}
+
+2. BẢNG MÀU HEX ĐÃ CHỌN:
+- Màu chủ đạo: ${primary}
+- Màu nền: ${bg}
+- Màu chữ: ${text}
+
+3. CHECKLIST HOÀN THIỆN (${doneCount}/5):
+[${chks[0]?.checked ? 'x' : ' '}] Đã chốt tên ứng dụng & chủ đề
+[${chks[1]?.checked ? 'x' : ' '}] Đã chọn bảng màu Hex đồng bộ
+[${chks[2]?.checked ? 'x' : ' '}] Ảnh màn hình Đăng nhập (Uizard)
+[${chks[3]?.checked ? 'x' : ' '}] Ảnh màn hình Đăng ký (Uizard)
+[${chks[4]?.checked ? 'x' : ' '}] Ảnh Màn hình chính (Uizard)${aiNotesSection}`;
+            }
+
+            saveState();
+        }
+
+        function copyProjectBriefText() {
+            updateSubmissionSummary();
+            copyTextFromElement('submission-output', 'Đã sao chép nội dung PROJECT BRIEF dạng văn bản!');
+        }
+
+        function printProjectBrief() {
+            updateSubmissionSummary();
+            showToast('Đang mở cửa sổ In / Lưu PDF cho PROJECT BRIEF...', 'info');
+            setTimeout(() => {
+                window.print();
+            }, 250);
+        }
+
+        function downloadProjectBriefHtml() {
+            updateSubmissionSummary();
+            const sheetEl = document.getElementById('brief-document-sheet');
+            if (!sheetEl) return;
+
+            const studentName = (document.getElementById('student-name')?.value || '').trim() || 'HocSinh';
+            const appName = (document.getElementById('app-name')?.value || '').trim() || 'ProjectBrief';
+            const htmlDoc = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT BRIEF - ${escapeHtml(appName)}</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-100 p-4 sm:p-8 antialiased">
+    <div class="max-w-4xl mx-auto">
+        ${sheetEl.outerHTML}
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PROJECT_BRIEF_${appName.replace(/\s+/g, '_')}_${studentName.replace(/\s+/g, '_')}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Đã tải xuống file PROJECT BRIEF (.html) đầy đủ hình ảnh & màu sắc!', 'success');
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return;
+                const state = JSON.parse(raw);
+
+                if (state.topic) document.getElementById('input-topic').value = state.topic;
+                if (state.topicEn) document.getElementById('input-topic-en').value = state.topicEn;
+                if (state.audience) document.getElementById('input-audience').value = state.audience;
+                if (state.feature) document.getElementById('input-feature').value = state.feature;
+
+                if (state.style) {
+                    const radio = document.querySelector(`input[name="style"][value="${state.style}"]`);
+                    if (radio) radio.checked = true;
+                }
+
+                if (state.colorPrimary) {
+                    document.getElementById('color-primary').value = state.colorPrimary;
+                    document.getElementById('hex-primary').value = state.colorPrimary.toUpperCase();
+                }
+                if (state.colorBg) {
+                    document.getElementById('color-bg').value = state.colorBg;
+                    document.getElementById('hex-bg').value = state.colorBg.toUpperCase();
+                }
+                if (state.colorText) {
+                    document.getElementById('color-text').value = state.colorText;
+                    document.getElementById('hex-text').value = state.colorText.toUpperCase();
+                }
+
+                if (state.studentName) document.getElementById('student-name').value = state.studentName;
+                if (state.appName) document.getElementById('app-name').value = state.appName;
+                if (state.appDesc) document.getElementById('app-desc').value = state.appDesc;
+
+                if (state.aiForm) {
+                    setAiFormData(state.aiForm);
+                    updateAiNotesMeta(true);
+                }
+
+                if (Array.isArray(state.checkboxes)) {
+                    const chks = document.querySelectorAll('.deliverable-chk');
+                    state.checkboxes.forEach((checked, idx) => {
+                        if (chks[idx]) chks[idx].checked = Boolean(checked);
+                    });
+                }
+            } catch (err) {
+                console.warn('Không thể khôi phục dữ liệu từ localStorage:', err);
+            }
+        }
+
+        function clearSavedData() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (err) {
+                console.warn('Không thể xóa localStorage:', err);
+            }
+
+            document.getElementById('input-topic').value = '';
+            document.getElementById('input-topic-en').value = '';
+            document.getElementById('input-audience').selectedIndex = 0;
+            const firstStyle = document.querySelector('input[name="style"]');
+            if (firstStyle) firstStyle.checked = true;
+            document.getElementById('input-feature').value = '';
+            document.getElementById('student-name').value = '';
+            document.getElementById('app-name').value = '';
+            document.getElementById('app-desc').value = '';
+
+            document.querySelectorAll('.deliverable-chk').forEach(c => { c.checked = false; });
+            ['login', 'register', 'home'].forEach(slot => {
+                briefMockupImages[slot] = null;
+                const inputEl = document.getElementById(`upload-${slot}`);
+                if (inputEl) inputEl.value = '';
+                renderMockupSlot(slot);
+            });
+            setAiFormData({});
+            updateAiNotesMeta(false);
+            applyPalette('#4F46E5', '#F1F5F9', '#1E293B', false);
+            updatePrompts();
+            updateSubmissionSummary();
+            showToast('Đã đặt lại toàn bộ dữ liệu trang về mặc định.', 'info');
+        }
+
+        // ==========================================
+        // 2. TAB NAVIGATION
+        // ==========================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            const targetPanel = document.getElementById(`panel-${tabId}`);
+            if (targetPanel) targetPanel.classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+                btn.classList.add('bg-white', 'text-slate-600', 'hover:bg-slate-100', 'border', 'border-slate-200');
+                const badge = btn.querySelector('span');
+                if (badge) {
+                    badge.classList.remove('bg-white/20');
+                    badge.classList.add('bg-slate-100', 'text-slate-600');
+                }
+            });
+
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-slate-600', 'hover:bg-slate-100', 'border', 'border-slate-200');
+                activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+                const badge = activeBtn.querySelector('span');
+                if (badge) {
+                    badge.classList.remove('bg-slate-100', 'text-slate-600');
+                    badge.classList.add('bg-white/20');
+                }
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ==========================================
+        // 3. AI PROMPT & UIZARD PROMPT GENERATORS
+        // ==========================================
+        function selectTopic(viTopic, enTopic) {
+            const topicEl = document.getElementById('input-topic');
+            const topicEnEl = document.getElementById('input-topic-en');
+            if (topicEl) topicEl.value = viTopic;
+            if (topicEnEl) topicEnEl.value = enTopic;
+            updatePrompts();
+            showToast(`Đã chọn chủ đề: ${viTopic}`, 'success');
+        }
+
+        function selectTopicEn(viTopic, enTopic) {
+            const topicEl = document.getElementById('input-topic');
+            const topicEnEl = document.getElementById('input-topic-en');
+            if (topicEnEl) topicEnEl.value = enTopic;
+            if (topicEl && !topicEl.value.trim()) topicEl.value = viTopic;
+            updatePrompts();
+            showToast(`Đã chọn chủ đề tiếng Anh: ${enTopic}`, 'success');
+        }
+
+        function updatePrompts() {
+            const topic = (document.getElementById('input-topic')?.value || '').trim() || '[điền chủ đề, VD: quản lý thời gian học tập]';
+            const audience = document.getElementById('input-audience')?.value || 'Học sinh cấp 2, cấp 3';
+            const styleRadio = document.querySelector('input[name="style"]:checked');
+            const styleVi = styleRadio ? styleRadio.value : 'Tối giản, hiện đại (Minimalist)';
+            const feature = (document.getElementById('input-feature')?.value || '').trim();
+            const featureLine = feature
+                ? `\n4. Gợi ý cách bố trí thêm tính năng "${feature}" thật gọn gàng trên Màn hình chính.`
+                : '';
+
+            const aiPrompt = `Đóng vai một chuyên gia thiết kế ứng dụng. Mình là học sinh đang làm dự án ứng dụng máy tính bằng Python và Qt Designer về chủ đề "${topic}", dành cho đối tượng "${audience}".
+Hãy giúp mình đề xuất ngắn gọn, dễ hiểu:
+1. 3 tên ứng dụng hay, hiện đại kèm ý nghĩa ngắn gọn.
+2. Danh sách các thành phần giao diện cần có trên 3 màn hình bắt buộc: Đăng nhập (Login), Đăng ký (Register) và Màn hình chính (Home).
+3. Gợi ý 1 bảng màu gồm 3 mã màu Hex (Màu chủ đạo, Màu nền, Màu chữ) phù hợp với phong cách "${styleVi}".${featureLine}`;
+
+            const aiOutputEl = document.getElementById('ai-prompt-output');
+            if (aiOutputEl) aiOutputEl.value = aiPrompt;
+
+            updateUizardPrompt();
+            updateSubmissionSummary();
+            saveState();
+        }
+
+        function updateUizardPrompt() {
+            const topicEnEl = document.getElementById('input-topic-en');
+            const hexPrimaryEl = document.getElementById('hex-primary');
+            const hexBgEl = document.getElementById('hex-bg');
+            const uizardOutEl = document.getElementById('uizard-prompt-output');
+            if (!uizardOutEl) return;
+
+            const topicEn = (topicEnEl?.value || '').trim() || 'student productivity app';
+            const styleRadio = document.querySelector('input[name="style"]:checked');
+            const styleEn = styleRadio ? (styleRadio.getAttribute('data-en') || 'minimalist, clean modern') : 'minimalist, clean modern';
+            const primaryHex = (hexPrimaryEl?.value || '#4F46E5').trim().toUpperCase();
+            const bgHex = (hexBgEl?.value || '#F1F5F9').trim().toUpperCase();
+
+            const uizardPrompt = `Very simple, flat, low-detail desktop UI wireframe for ${topicEn}, using ${styleEn} style, primary color ${primaryHex}, background color ${bgHex}. Keep it minimal with basic form inputs, standard buttons, a simple sidebar, and a basic table. No complex charts, no 3D graphics, no shadows or decorative illustrations, easy to recreate in Qt Designer.`;
+
+            uizardOutEl.value = uizardPrompt;
+            saveState();
+        }
+
+        // ==========================================
+        // 4. AI RESPONSE STRUCTURED FORM MANAGEMENT
+        // ==========================================
+        function switchScreenSpecTab(screen) {
+            document.querySelectorAll('.spec-panel').forEach(p => p.classList.add('hidden'));
+            const activePanel = document.getElementById(`spec-panel-${screen}`);
+            if (activePanel) activePanel.classList.remove('hidden');
+
+            document.querySelectorAll('.spec-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-indigo-700', 'shadow-sm');
+                btn.classList.add('text-slate-600', 'hover:text-slate-900');
+            });
+            const activeBtn = document.getElementById(`spec-tab-${screen}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-600', 'hover:text-slate-900');
+                activeBtn.classList.add('bg-white', 'text-indigo-700', 'shadow-sm');
+            }
+        }
+
+        function getAiFormData() {
+            const selectedWidgets = Array.from(document.querySelectorAll('.qt-widget-chk:checked')).map(c => c.value);
+            return {
+                appName: (document.getElementById('ai-out-appname')?.value || '').trim(),
+                style: (document.getElementById('ai-out-style')?.value || '').trim(),
+                meaning: (document.getElementById('ai-out-meaning')?.value || '').trim(),
+                hexPrimary: (document.getElementById('ai-out-hex-primary')?.value || '').trim().toUpperCase(),
+                hexBg: (document.getElementById('ai-out-hex-bg')?.value || '').trim().toUpperCase(),
+                hexText: (document.getElementById('ai-out-hex-text')?.value || '').trim().toUpperCase(),
+                login: (document.getElementById('ai-out-login')?.value || '').trim(),
+                loginLayout: (document.getElementById('ai-out-login-layout')?.value || '').trim(),
+                register: (document.getElementById('ai-out-register')?.value || '').trim(),
+                registerLayout: (document.getElementById('ai-out-register-layout')?.value || '').trim(),
+                home: (document.getElementById('ai-out-home')?.value || '').trim(),
+                homeLayout: (document.getElementById('ai-out-home-layout')?.value || '').trim(),
+                widgets: selectedWidgets,
+                lvl1: (document.getElementById('ai-out-lvl1')?.value || '').trim(),
+                lvl2: (document.getElementById('ai-out-lvl2')?.value || '').trim(),
+                lvl3: (document.getElementById('ai-out-lvl3')?.value || '').trim()
+            };
+        }
+
+        function setAiFormData(data) {
+            if (!data) return;
+            const map = {
+                'ai-out-appname': data.appName || '',
+                'ai-out-style': data.style || '',
+                'ai-out-meaning': data.meaning || '',
+                'ai-out-hex-primary': data.hexPrimary || '',
+                'ai-out-hex-bg': data.hexBg || '',
+                'ai-out-hex-text': data.hexText || '',
+                'ai-out-login': data.login || '',
+                'ai-out-login-layout': data.loginLayout || '',
+                'ai-out-register': data.register || '',
+                'ai-out-register-layout': data.registerLayout || '',
+                'ai-out-home': data.home || '',
+                'ai-out-home-layout': data.homeLayout || '',
+                'ai-out-lvl1': data.lvl1 || '',
+                'ai-out-lvl2': data.lvl2 || '',
+                'ai-out-lvl3': data.lvl3 || ''
+            };
+            Object.entries(map).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (el) el.value = val;
+            });
+
+            const widgetList = Array.isArray(data.widgets) ? data.widgets : [];
+            document.querySelectorAll('.qt-widget-chk').forEach(chk => {
+                chk.checked = widgetList.includes(chk.value);
+            });
+
+            updateAiColorSwatches();
+        }
+
+        function fillSampleStudyFlow() {
+            setAiFormData({
+                appName: 'StudyFlow',
+                style: 'Modern Student – Bright Blue (Fresh Student)',
+                meaning: 'Dòng chảy học tập – Quản lý bài tập, thời gian và tiến độ học tập khoa học cho học sinh THCS/THPT.',
+                hexPrimary: '#5B7CFA',
+                hexBg: '#F4F7FF',
+                hexText: '#25304A',
+                login: '- Logo & Tên app (QLabel: lblLogo, lblAppName)\n- Tiêu đề (QLabel: lblTitle)\n- Tài khoản & Mật khẩu (QLineEdit: txtUsername, txtPassword)\n- Hiện/ẩn MK (QToolButton: btnShowPassword) & Ghi nhớ (QCheckBox: chkRemember)\n- Nút Đăng nhập (btnLogin), Liên kết Đăng ký (btnGoRegister), Lỗi (lblError)',
+                loginLayout: 'Logo và tên app ở phía trên, tiêu đề "Chào mừng bạn trở lại!", 2 ô nhập căn giữa, checkbox ghi nhớ, nút Đăng nhập nổi bật và dòng "Chưa có tài khoản? Đăng ký ngay" ở cuối.',
+                register: '- Logo & Tiêu đề (QLabel: lblLogo, lblTitle)\n- Họ tên, Tài khoản, Email (QLineEdit: txtFullName, txtUsername, txtEmail)\n- Mật khẩu & Xác nhận (txtPassword, txtConfirmPassword)\n- Chọn cấp học (QComboBox: cboGrade) & Điều khoản (QCheckBox: chkTerms)\n- Nút Tạo tài khoản (btnRegister) & Quay lại (btnGoLogin)',
+                registerLayout: 'Tiêu đề "Tạo tài khoản mới", chia 2 nhóm: Thông tin cá nhân và Thông tin tài khoản. Dùng QComboBox chọn THCS/THPT (hoặc lớp 6–12), nút Đăng ký ở cuối.',
+                home: '- Sidebar trái: lblLogo, btnHome, btnTasks, btnSchedule, btnTimer, btnStatistics, btnSettings, btnLogout\n- Header trên: lblGreeting, lblDate, txtSearch, lblAvatar\n- 4 thẻ Overview (QFrame): Bài tập, Hoàn thành, Thời gian học, Mục tiêu tuần\n- Quản lý bài tập: QTableWidget + nút Thêm/Sửa/Xóa + QComboBox lọc + QDateEdit + QProgressBar',
+                homeLayout: 'Bố cục 4 khu vực: Sidebar trái, Header trên, 4 thẻ tổng quan và bảng bài tập gồm 4 cột (Môn học | Tên bài tập | Hạn nộp | Trạng thái).',
+                widgets: ['QStackedWidget', 'QLineEdit', 'QPushButton', 'QLabel', 'QFrame', 'QCheckBox', 'QComboBox', 'QTableWidget', 'QProgressBar', 'QDateEdit', 'QVBoxLayout / QHBoxLayout'],
+                lvl1: 'Đăng nhập, đăng ký, chuyển màn hình (QStackedWidget), trang chủ, thêm/sửa/xóa bài tập.',
+                lvl2: 'Quản lý hạn nộp, bộ lọc trạng thái, thời khóa biểu, bộ đếm Pomodoro.',
+                lvl3: 'Thống kê thời gian học, biểu đồ tiến độ, lưu dữ liệu bằng SQLite.'
+            });
+            handleAiFormInput();
+            showToast('Đã điền sẵn bản mẫu StudyFlow để tham khảo!', 'success');
+        }
+
+        function updateAiColorSwatches() {
+            const pairs = [
+                ['ai-out-hex-primary', 'ai-swatch-primary', '#5B7CFA'],
+                ['ai-out-hex-bg', 'ai-swatch-bg', '#F4F7FF'],
+                ['ai-out-hex-text', 'ai-swatch-text', '#25304A']
+            ];
+            pairs.forEach(([inputId, swatchId, fallback]) => {
+                const val = (document.getElementById(inputId)?.value || '').trim();
+                const swatch = document.getElementById(swatchId);
+                if (swatch) {
+                    swatch.style.backgroundColor = /^#[0-9A-Fa-f]{6}$/.test(val) ? val : fallback;
+                }
+            });
+        }
+
+        function buildAiFormSummaryText() {
+            const d = getAiFormData();
+            const hasAny = Object.entries(d).some(([k, v]) => Array.isArray(v) ? v.length > 0 : v.length > 0);
+            if (!hasAny) return '';
+
+            const lines = [];
+            if (d.appName) lines.push(`- Tên ứng dụng chốt: ${d.appName}`);
+            if (d.style) lines.push(`- Phong cách thiết kế: ${d.style}`);
+            if (d.meaning) lines.push(`- Ý nghĩa / Mục tiêu: ${d.meaning}`);
+            if (d.hexPrimary || d.hexBg || d.hexText) {
+                lines.push(`- Bảng màu AI gợi ý: Chủ đạo (${d.hexPrimary || '...'}) | Nền (${d.hexBg || '...'}) | Chữ (${d.hexText || '...'})`);
+            }
+            if (d.login || d.loginLayout) {
+                lines.push(`- Màn hình 1 - Đăng nhập (Login):`);
+                if (d.login) lines.push(`  + Widget & Tên biến:\n    ${d.login.replace(/\n/g, '\n    ')}`);
+                if (d.loginLayout) lines.push(`  + Bố cục: ${d.loginLayout}`);
+            }
+            if (d.register || d.registerLayout) {
+                lines.push(`- Màn hình 2 - Đăng ký (Register):`);
+                if (d.register) lines.push(`  + Widget & Tên biến:\n    ${d.register.replace(/\n/g, '\n    ')}`);
+                if (d.registerLayout) lines.push(`  + Bố cục: ${d.registerLayout}`);
+            }
+            if (d.home || d.homeLayout) {
+                lines.push(`- Màn hình 3 - Trang chủ (Home/Dashboard):`);
+                if (d.home) lines.push(`  + Khu vực & Widget:\n    ${d.home.replace(/\n/g, '\n    ')}`);
+                if (d.homeLayout) lines.push(`  + Bố cục / Dữ liệu: ${d.homeLayout}`);
+            }
+            if (d.widgets && d.widgets.length > 0) {
+                lines.push(`- Bộ Widget Qt Designer dự kiến: ${d.widgets.join(', ')}`);
+            }
+            if (d.lvl1 || d.lvl2 || d.lvl3) {
+                lines.push(`- Phân cấp tính năng sản phẩm:`);
+                if (d.lvl1) lines.push(`  + Mức 1 (Bắt buộc): ${d.lvl1}`);
+                if (d.lvl2) lines.push(`  + Mức 2 (Mở rộng): ${d.lvl2}`);
+                if (d.lvl3) lines.push(`  + Mức 3 (Nâng cao): ${d.lvl3}`);
+            }
+            return lines.join('\n');
+        }
+
+        function updateAiNotesMeta(isSaved = true) {
+            const statusEl = document.getElementById('ai-notes-status');
+            const countEl = document.getElementById('ai-notes-count');
+            if (!statusEl || !countEl) return;
+
+            const d = getAiFormData();
+            const mainSections = [
+                d.appName,
+                (d.hexPrimary || d.hexBg || d.hexText) ? 'ok' : '',
+                (d.login || d.loginLayout) ? 'ok' : '',
+                (d.register || d.registerLayout) ? 'ok' : '',
+                (d.home || d.homeLayout) ? 'ok' : '',
+                d.widgets.length > 0 ? 'ok' : '',
+                (d.lvl1 || d.lvl2 || d.lvl3) ? 'ok' : ''
+            ];
+            const filledCount = mainSections.filter(v => v.length > 0).length;
+            countEl.textContent = `Đã điền ${filledCount}/7 mục chính • Tự động lưu trên trình duyệt`;
+
+            if (filledCount === 0 && !d.style && !d.meaning) {
+                statusEl.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold';
+                statusEl.innerHTML = '<i class="fa-regular fa-note-sticky"></i> Chưa nhập dữ liệu';
+            } else if (isSaved) {
+                statusEl.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold';
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> Đã lưu (${filledCount}/7 mục)`;
+            }
+        }
+
+        function handleAiFormInput() {
+            updateAiColorSwatches();
+            saveState();
+            updateAiNotesMeta(true);
+            updateSubmissionSummary();
+        }
+
+        function syncAiDataToNextSteps(notify = false) {
+            const d = getAiFormData();
+            let syncedItems = [];
+
+            if (d.appName) {
+                document.getElementById('app-name').value = d.appName;
+                syncedItems.push('Tên ứng dụng');
+            }
+            if (d.meaning) {
+                document.getElementById('app-desc').value = d.meaning;
+                syncedItems.push('Mô tả');
+            }
+
+            const isValidHex = hex => /^#[0-9A-Fa-f]{6}$/.test(hex);
+            const curPrimary = document.getElementById('color-primary').value;
+            const curBg = document.getElementById('color-bg').value;
+            const curText = document.getElementById('color-text').value;
+
+            if (isValidHex(d.hexPrimary) || isValidHex(d.hexBg) || isValidHex(d.hexText)) {
+                applyPalette(
+                    isValidHex(d.hexPrimary) ? d.hexPrimary : curPrimary,
+                    isValidHex(d.hexBg) ? d.hexBg : curBg,
+                    isValidHex(d.hexText) ? d.hexText : curText,
+                    false
+                );
+                syncedItems.push('Bảng màu Hex');
+            }
+
+            updateSubmissionSummary();
+            saveState();
+
+            if (notify) {
+                if (syncedItems.length > 0) {
+                    showToast(`Đã đồng bộ ${syncedItems.join(', ')} sang Bước 2 & 3!`, 'success');
+                } else {
+                    showToast('Hãy nhập Tên ứng dụng hoặc mã màu Hex (#XXXXXX) trước khi đồng bộ nhé!', 'info');
+                }
+            }
+
+            return syncedItems;
+        }
+
+        function saveAiNotesExplicit() {
+            const summary = buildAiFormSummaryText();
+            if (summary) {
+                const syncedItems = syncAiDataToNextSteps(false);
+                updateAiNotesMeta(true);
+                const syncMsg = syncedItems.length > 0
+                    ? `Đã lưu & đồng bộ (${syncedItems.join(', ')}) sang Bước 2, 3!`
+                    : 'Đã lưu bản đặc tả và chuyển sang Bước 2 (Uizard)!';
+                showToast(syncMsg, 'success');
+            } else {
+                showToast('Đang chuyển sang Bước 2 (Uizard). Em có thể quay lại điền form AI sau nhé!', 'info');
+            }
+            switchTab('uizard');
+        }
+
+        function clearAiNotes() {
+            setAiFormData({});
+            saveState();
+            updateAiNotesMeta(false);
+            updateSubmissionSummary();
+            showToast('Đã xóa sạch form kết quả phản hồi AI.', 'info');
+        }
+
+        // ==========================================
+        // 5. LIVE QT COLOR PALETTE SIMULATOR
+        // ==========================================
+        function applyPalette(primary, bg, text, notify = true) {
+            document.getElementById('color-primary').value = primary.toLowerCase();
+            document.getElementById('hex-primary').value = primary.toUpperCase();
+            document.getElementById('color-bg').value = bg.toLowerCase();
+            document.getElementById('hex-bg').value = bg.toUpperCase();
+            document.getElementById('color-text').value = text.toLowerCase();
+            document.getElementById('hex-text').value = text.toUpperCase();
+            updateColorPreview();
+            if (notify) showToast('Đã áp dụng bảng màu mẫu!', 'success');
+        }
+
+        function syncHexToPicker(type) {
+            const hexInput = document.getElementById(`hex-${type}`);
+            const colorInput = document.getElementById(`color-${type}`);
+            if (!hexInput || !colorInput) return;
+
+            let val = hexInput.value.trim();
+            if (val && !val.startsWith('#')) {
+                val = '#' + val;
+            }
+            if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                colorInput.value = val.toLowerCase();
+                updateColorPreview(false);
+            }
+        }
+
+        function updateColorPreview(syncText = true) {
+            const primary = document.getElementById('color-primary')?.value || '#4f46e5';
+            const bg = document.getElementById('color-bg')?.value || '#f1f5f9';
+            const text = document.getElementById('color-text')?.value || '#1e293b';
+
+            if (syncText) {
+                document.getElementById('hex-primary').value = primary.toUpperCase();
+                document.getElementById('hex-bg').value = bg.toUpperCase();
+                document.getElementById('hex-text').value = text.toUpperCase();
+            }
+
+            const previewBg = document.getElementById('qt-preview-bg');
+            const previewTitle = document.getElementById('qt-preview-title');
+            const previewBtn = document.getElementById('qt-preview-btn');
+            const previewLink = document.getElementById('qt-preview-link');
+
+            if (previewBg) previewBg.style.backgroundColor = bg;
+            if (previewTitle) previewTitle.style.color = text;
+            if (previewBtn) previewBtn.style.backgroundColor = primary;
+            if (previewLink) previewLink.style.color = primary;
+
+            updateUizardPrompt();
+            updateSubmissionSummary();
+            saveState();
+        }
+
+        // ==========================================
+        // 7. CLIPBOARD & TOAST UTILITIES (NO ALERT)
+        // ==========================================
+        function copyTextFromElement(elementId, successMessage) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.select();
+            el.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                showToast(successMessage, 'success');
+            } catch (err) {
+                showToast('Không thể sao chép tự động, vui lòng bấm Ctrl+C.', 'error');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-indigo-600';
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg text-xs sm:text-sm font-semibold flex items-center gap-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            updatePrompts();
+            updateColorPreview();
+            updateSubmissionSummary();
+        });
+    </script>
+</body>
+</html>

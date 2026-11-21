@@ -1,0 +1,11 @@
+{
+  "name": "app-producer-advanced-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web hỗ trợ dự án cá nhân 4 tuần, khóa App Producer Advanced (Qt Designer + Python)",
+  "scripts": {
+    "build": "python3 build/build.py",
+    "test": "node tests/hub.test.js"
+  },
+  "devDependencies": { "jsdom": "^24.0.0" }
+}

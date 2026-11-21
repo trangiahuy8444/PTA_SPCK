@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>App Producer · Dự án cá nhân 4 tuần</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/*CSS*/
+.w1frame{width:100%;min-height:760px;border:1px solid var(--line);border-radius:14px;background:#fff;display:block}
+.grp{font-size:11px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 2px}
+.swatch{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid #0002;vertical-align:-2px;margin-right:5px}
+.refcard{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcff;font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.refcard b{display:block;font-size:12px;margin-bottom:4px;color:var(--brand)}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <div class="brand"><div class="brandmark" aria-hidden="true">✦</div><div><b>APP PRODUCER <span style="color:#93a8ff">· DỰ ÁN CÁ NHÂN</span></b><small>Python + PyQt6 + Qt Designer · 4 tuần</small></div></div>
+ <div style="display:flex;gap:10px"><span class="top-pill">Ý TƯỞNG → GIAO DIỆN → CODE → DEMO</span><span class="top-pill">TUẦN 1 · 2 · 3 · 4</span></div>
+</header>
+<section class="hero">
+ <div class="eyebrow">Individual project · 4 weeks</div>
+ <h1>Từ một vấn đề thật đến phần mềm desktop của riêng em</h1>
+ <p>Tuần 1 chốt ý tưởng và bản mẫu giao diện. Ba tuần sau nối tiếp trực tiếp từ đó: tên ứng dụng, bảng màu và đặc tả màn hình em đã chốt được dùng lại để dựng giao diện, viết code và chuẩn bị demo.</p>
+</section>
+<div class="shell"><div class="layout">
+<aside class="sidebar">
+ <div class="side-title">Hành trình 4 tuần</div>
+ <nav id="navigation" aria-label="Các mục"></nav>
+ <div class="progress-card"><div class="progress-head"><span>Tiến độ hồ sơ</span><span id="progressPct">0%</span></div><div class="track"><i id="progressFill"></i></div><div class="tiny">Trung bình 4 tuần.</div></div>
+ <div class="callout" style="margin:14px 4px 2px;font-size:11.5px"><strong>Nguyên tắc học tập</strong>AI hỗ trợ tư duy. Em là người lựa chọn, giải thích và chịu trách nhiệm về sản phẩm.</div>
+</aside>
+<main id="mainArea"></main>
+</div></div>
+<div class="footer">APP PRODUCER · DỰ ÁN CÁ NHÂN 4 TUẦN</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/*PURE*/
+const W1_KEY = 'app_producer_advanced_week1_v2'; // khóa lưu của trang Tuần 1 (giữ nguyên, chỉ đọc)
+const EMPTY = '[chưa điền]';
+const PAL_DEF = { pal_p: '#4F46E5', pal_b: '#F1F5F9', pal_t: '#1E293B' };
+const WEEKS = [
+  { n: 1, slug: 'tuan-1', buoi: 10, lab: 'Lab10', name: 'Lên ý tưởng AI & Mẫu Uizard', goal: 'Chốt chủ đề, tên app, bảng màu Hex bằng AI và tạo bản mẫu giao diện trên Uizard', out: 'Mô tả + 3 ảnh Uizard' },
+  { n: 2, slug: 'tuan-2', buoi: 11, lab: 'Lab11', name: 'Thiết kế giao diện Qt Designer', goal: 'Chuyển bản mẫu Uizard thành giao diện thực tế, trang trí bằng QSS và đặt objectName chuẩn', out: '3 file .ui hoàn chỉnh' },
+  { n: 3, slug: 'tuan-3', buoi: 12, lab: 'Lab12', name: 'Lập trình chức năng Python', goal: 'Code luồng đăng ký, lưu tài khoản vào file, kiểm tra đăng nhập và chuyển đổi giữa các màn hình', out: 'App chạy đủ chức năng' },
+  { n: 4, slug: 'tuan-4', buoi: 13, lab: 'SPCK_Final', name: 'Kiểm thử & Thuyết trình', goal: 'Kiểm thử chéo, sửa lỗi, hoàn thiện ứng dụng cá nhân và thuyết trình demo trước lớp', out: 'Demo sản phẩm (3–5 phút)' }
+];
+const ROLES = [
+  ['loginUser', 'QLineEdit', 'Ô tên đăng nhập', 'txtLoginUser', 'login'],
+  ['loginPass', 'QLineEdit', 'Ô mật khẩu (echoMode = Password)', 'txtLoginPass', 'login'],
+  ['btnLogin', 'QPushButton', 'Nút Đăng nhập', 'btnLogin', 'login'],
+  ['btnToRegister', 'QPushButton', 'Nút sang màn hình Đăng ký', 'btnToRegister', 'login'],
+  ['regUser', 'QLineEdit', 'Ô tên đăng nhập', 'txtRegUser', 'register'],
+  ['regPass', 'QLineEdit', 'Ô mật khẩu', 'txtRegPass', 'register'],
+  ['regConfirm', 'QLineEdit', 'Ô nhập lại mật khẩu', 'txtRegConfirm', 'register'],
+  ['btnRegister', 'QPushButton', 'Nút Tạo tài khoản', 'btnRegister', 'register'],
+  ['btnToLogin', 'QPushButton', 'Nút quay lại Đăng nhập', 'btnToLogin', 'register'],
+  ['lblWelcome', 'QLabel', 'Lời chào ở Trang chủ', 'lblWelcome', 'home'],
+  ['btnLogout', 'QPushButton', 'Nút Đăng xuất', 'btnLogout', 'home']
+];
+const PREFIX = { QLineEdit: 'txt', QTextEdit: 'txt', QPushButton: 'btn', QLabel: 'lbl', QCheckBox: 'chk', QComboBox: 'cbo', QFrame: 'frm', QTableWidget: 'tbl', QDateEdit: 'dte', QProgressBar: 'pbr' };
+const CUSTOM_CLASSES = Object.keys(PREFIX);
+const TESTS = [
+  ['Đăng ký với tên 2 ký tự', 'Hộp thoại báo lỗi tên đăng nhập'],
+  ['Đăng ký với mật khẩu 5 ký tự', 'Hộp thoại báo mật khẩu quá ngắn'],
+  ['Đăng ký với hai mật khẩu khác nhau', 'Hộp thoại báo không khớp'],
+  ['Đăng ký hợp lệ, rồi đăng ký lại cùng tên', 'Lần 1 thành công và về màn hình Đăng nhập; lần 2 báo tên đã tồn tại'],
+  ['Đăng nhập đúng', 'Sang Trang chủ, hiện lời chào'],
+  ['Đăng nhập sai mật khẩu hoặc tên không tồn tại', 'Ở lại màn hình Đăng nhập, hộp thoại báo lỗi'],
+  ['Đăng xuất', 'Về màn hình Đăng nhập, ô mật khẩu trống']
+];
+const CRIT = [
+  ['Ý tưởng và phạm vi', 15, 'Ý tưởng rõ, vừa sức, giải thích được lý do chọn'],
+  ['Giao diện', 25, 'Bố cục gọn, co giãn được, đặt tên widget đúng quy ước, giống bản mẫu Uizard ở mức hợp lý'],
+  ['Chức năng', 35, 'Đăng ký, đăng nhập, chuyển giao diện chạy đúng; kiểm tra dữ liệu nhập; có chức năng riêng'],
+  ['Thuyết trình và hỏi đáp', 15, 'Đúng giờ, demo trôi chảy, trả lời được câu hỏi về code của mình'],
+  ['Quá trình và trung thực khi dùng AI', 10, 'Phân biệt được phần AI gợi ý và phần tự làm, nộp đúng hạn mỗi tuần']
+];
+const SEGS = [['Vấn đề và người dùng', 45], ['Quá trình làm', 60], ['Demo trực tiếp', 120], ['Bài học và hướng phát triển', 45], ['Hỏi đáp', 30]];
+const STATUS = [['', 'Chưa đánh giá', 'none'], ['ok', 'Đúng tiến độ', 'ok'], ['help', 'Cần hỗ trợ', 'help'], ['late', 'Chậm', 'late']];
+
+const AUTH_CORE = `    def find(self, username):
+        for user in self.users:
+            if user.username == username:
+                return user
+        return None
+
+    def register(self, username, password, confirm):
+        """Trả về (thành công, thông báo)."""
+        username = username.strip()
+        if not (3 <= len(username) <= 20 and username.isalnum()):
+            return False, "Tên đăng nhập gồm 3-20 ký tự, chỉ chữ hoặc số"
+        if len(password) < 6:
+            return False, "Mật khẩu tối thiểu 6 ký tự"
+        if password != confirm:
+            return False, "Mật khẩu nhập lại không khớp"
+        if self.find(username) is not None:
+            return False, "Tên đăng nhập đã tồn tại"
+        self.users.append(User(username, hash_password(password)))
+        self.save()
+        return True, "Đăng ký thành công"
+
+    def login(self, username, password):
+        """Trả về True nếu đúng tên đăng nhập và mật khẩu."""
+        user = self.find(username.strip())
+        return user is not None and user.password_hash == hash_password(password)`;
+const AUTH_HEAD_FILE = `import hashlib
+import json
+import os
+
+DATA_FILE = "users.json"
+
+
+def hash_password(password):
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+class User:
+    def __init__(self, username, password_hash):
+        self.username = username
+        self.password_hash = password_hash
+
+    def to_dict(self):
+        return {"username": self.username, "password_hash": self.password_hash}
+
+
+class AuthService:
+    def __init__(self, path=DATA_FILE):
+        self.path = path
+        self.users = []  # danh sách các đối tượng User
+        self.load()
+
+    def load(self):
+        if not os.path.exists(self.path):
+            return
+        try:
+            with open(self.path, "r", encoding="utf-8") as f:
+                for item in json.load(f):
+                    self.users.append(User(item["username"], item["password_hash"]))
+        except (ValueError, KeyError):
+            self.users = []  # file hỏng: bắt đầu lại với danh sách rỗng
+
+    def save(self):
+        with open(self.path, "w", encoding="utf-8") as f:
+            json.dump([u.to_dict() for u in self.users], f, ensure_ascii=False, indent=2)
+`;
+const AUTH_HEAD_MEM = `import hashlib
+
+
+def hash_password(password):
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+class User:
+    def __init__(self, username, password_hash):
+        self.username = username
+        self.password_hash = password_hash
+
+
+class AuthService:
+    def __init__(self):
+        self.users = []  # danh sách các đối tượng User, mất khi tắt chương trình
+
+    def save(self):
+        pass  # bản chỉ dùng bộ nhớ: không ghi ra file
+`;
+
+function def() {
+  return {
+    f: {}, c: {}, names: {}, custom: [],
+    bugs: [{ who: '', what: '', fixed: false }],
+    teacher: { students: [], reports: {}, sid: '', n: 1 }
+  };
+}
+let S = def();
+let W1 = null; // dữ liệu đọc từ trang Tuần 1 (chỉ đọc)
+
+const val = (k) => (typeof S.f[k] === 'string' ? S.f[k] : '').trim();
+const or = (k) => val(k) || EMPTY;
+const orv = (s) => (typeof s === 'string' ? s : '').trim() || EMPTY;
+const w1s = (k) => (W1 && typeof W1[k] === 'string' ? W1[k] : '').trim();
+const w1a = (k) => (W1 && W1.aiForm && typeof W1.aiForm[k] === 'string' ? W1.aiForm[k] : '').trim();
+const isHex = (x) => /^#[0-9a-fA-F]{6}$/.test(x || '');
+function eff(k) {
+  const own = val(k);
+  if (own) return own;
+  if (k === 'appName') return w1s('appName') || w1a('appName');
+  if (k === 'appDesc') return w1s('appDesc') || w1a('meaning');
+  if (k === 'studentName') return w1s('studentName');
+  return '';
+}
+function hexv(k) {
+  const own = val(k);
+  if (isHex(own)) return own.toUpperCase();
+  const src = { pal_p: [w1a('hexPrimary'), w1s('colorPrimary')], pal_b: [w1a('hexBg'), w1s('colorBg')], pal_t: [w1a('hexText'), w1s('colorText')] }[k] || [];
+  for (const c of src) if (isHex(c)) return c.toUpperCase();
+  return PAL_DEF[k];
+}
+const slug = (s) => (s || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'hoc-vien';
+const ckeys = (p, n) => Array.from({ length: n }, (_, i) => p + (i + 1));
+const nCheck = (keys) => keys.filter((k) => S.c[k]).length;
+function darken(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (1 - f)));
+  return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+const storageMode = () => (S.f.storage === 'mem' ? 'mem' : 'file');
+
+function nameOf(id) {
+  const r = ROLES.find((x) => x[0] === id);
+  return (S.names[id] === undefined ? r[3] : S.names[id]).trim();
+}
+function validateName(cls, name) {
+  if (!name) return 'Chưa đặt tên';
+  if (!/^[A-Za-z][A-Za-z0-9]*$/.test(name)) return 'Chỉ dùng chữ không dấu và số, bắt đầu bằng chữ';
+  const p = PREFIX[cls];
+  if (!p) return '';
+  if (!name.startsWith(p) || name.length === p.length || !/[A-Z0-9]/.test(name[p.length])) return `Cần bắt đầu bằng "${p}" + chữ hoa, ví dụ ${p}Ten`;
+  return '';
+}
+function allWidgetRows() {
+  const rows = ROLES.map((r) => ({ id: r[0], cls: r[1], desc: r[2], name: nameOf(r[0]), win: r[4] }));
+  S.custom.forEach((c, i) => rows.push({ id: 'custom' + i, cls: c.cls, desc: 'Widget riêng của ứng dụng', name: (c.name || '').trim(), win: 'custom' }));
+  return rows;
+}
+function nameIssues() {
+  const rows = allWidgetRows();
+  const count = {};
+  rows.forEach((r) => { if (r.name) { const k = r.win + '|' + r.name; count[k] = (count[k] || 0) + 1; } });
+  const out = {};
+  rows.forEach((r) => {
+    let m = validateName(r.cls, r.name);
+    if (!m && count[r.win + '|' + r.name] > 1) m = 'Trùng tên trong cùng một form';
+    out[r.id] = m;
+  });
+  return out;
+}
+
+function pct(units) { return units.length ? Math.round(units.filter(Boolean).length / units.length * 100) : 0; }
+function totalScore() { return CRIT.reduce((s, c, i) => s + Math.min(c[1], Math.max(0, parseInt(S.f['score' + i], 10) || 0)), 0); }
+function w1Done() { const cb = W1 && Array.isArray(W1.checkboxes) ? W1.checkboxes : []; return Array.from({ length: 5 }, (_, i) => !!cb[i]); }
+function weekPercents() {
+  const c = (p, n) => ckeys(p, n).map((k) => !!S.c[k]);
+  const s1 = w1Done().concat([!!eff('appName')]);
+  const s2 = c('w2a', 4).concat(c('w2s', 3), c('w2d', 3));
+  const s3 = c('w3a', 4).concat(c('w3t', 7), c('w3d', 4));
+  const s4 = [S.bugs.some((b) => (b.what || '').trim())].concat(c('w4p', 4), c('w4d', 4), [!!val('custName'), !!val('custData'), totalScore() > 0, !!val('w4Hard')]);
+  return [s1, s2, s3, s4].map(pct);
+}
+
+function buildQss() {
+  const P = hexv('pal_p'), B = hexv('pal_b'), T = hexv('pal_t');
+  return `QMainWindow, QWidget {\n    background-color: ${B};\n    color: ${T};\n    font-size: 14px;\n}\n\n` +
+    `QPushButton {\n    background-color: ${P};\n    color: white;\n    border: none;\n    border-radius: 8px;\n    padding: 8px 14px;\n}\n\n` +
+    `QPushButton:hover {\n    background-color: ${darken(P, 0.15)};\n}\n\n` +
+    `QLineEdit {\n    background-color: white;\n    color: ${T};\n    border: 1px solid #C9D1E3;\n    border-radius: 8px;\n    padding: 6px 8px;\n}\n\n` +
+    `QLineEdit:focus {\n    border: 1px solid ${P};\n}`;
+}
+function buildCmd() {
+  return `# Cách 1 (chạy trong thư mục dự án)\npyuic6 login.ui -o ui_login.py\npyuic6 register.ui -o ui_register.py\npyuic6 home.ui -o ui_home.py\n\n# Cách 2 (nếu cách 1 báo không tìm thấy lệnh)\npython -m PyQt6.uic.pyuic login.ui -o ui_login.py\npython -m PyQt6.uic.pyuic register.ui -o ui_register.py\npython -m PyQt6.uic.pyuic home.ui -o ui_home.py`;
+}
+function buildAuthPy() { return (storageMode() === 'mem' ? AUTH_HEAD_MEM : AUTH_HEAD_FILE) + '\n' + AUTH_CORE; }
+function buildMainPy() {
+  const n = nameOf;
+  return `import sys
+
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
+
+from auth import AuthService
+from ui_home import Ui_MainWindow as Ui_Home
+from ui_login import Ui_MainWindow as Ui_Login
+from ui_register import Ui_MainWindow as Ui_Register
+
+
+class HomeWindow(QMainWindow):
+    def __init__(self, login_window, username):
+        super().__init__()
+        self.ui = Ui_Home()
+        self.ui.setupUi(self)
+        self.login_window = login_window
+        self.ui.${n('lblWelcome')}.setText(f"Xin chào, {username}!")
+        self.ui.${n('btnLogout')}.clicked.connect(self.handle_logout)
+
+    def handle_logout(self):
+        self.login_window.ui.${n('loginPass')}.clear()
+        self.login_window.show()
+        self.close()
+
+
+class RegisterWindow(QMainWindow):
+    def __init__(self, login_window, auth):
+        super().__init__()
+        self.ui = Ui_Register()
+        self.ui.setupUi(self)
+        self.login_window = login_window
+        self.auth = auth
+        self.ui.${n('btnRegister')}.clicked.connect(self.handle_register)
+        self.ui.${n('btnToLogin')}.clicked.connect(self.back_to_login)
+
+    def handle_register(self):
+        ok, message = self.auth.register(
+            self.ui.${n('regUser')}.text(),
+            self.ui.${n('regPass')}.text(),
+            self.ui.${n('regConfirm')}.text(),
+        )
+        if ok:
+            QMessageBox.information(self, "Đăng ký", message)
+            self.back_to_login()
+        else:
+            QMessageBox.warning(self, "Đăng ký", message)
+
+    def back_to_login(self):
+        self.login_window.show()
+        self.close()
+
+
+class LoginWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Login()
+        self.ui.setupUi(self)
+        self.auth = AuthService()
+        self.register_window = None
+        self.home_window = None
+        self.ui.${n('btnLogin')}.clicked.connect(self.handle_login)
+        self.ui.${n('btnToRegister')}.clicked.connect(self.open_register)
+
+    def open_register(self):
+        self.register_window = RegisterWindow(self, self.auth)
+        self.register_window.show()
+        self.hide()
+
+    def handle_login(self):
+        username = self.ui.${n('loginUser')}.text().strip()
+        if self.auth.login(username, self.ui.${n('loginPass')}.text()):
+            self.home_window = HomeWindow(self, username)
+            self.home_window.show()
+            self.hide()
+        else:
+            QMessageBox.warning(self, "Đăng nhập", "Sai tên đăng nhập hoặc mật khẩu")
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = LoginWindow()
+    window.show()
+    sys.exit(app.exec())
+`;
+}
+function buildW1Summary() {
+  if (!W1) return 'Chưa nhận được dữ liệu Tuần 1.';
+  const a = W1.aiForm || {};
+  const cnt = w1Done().filter(Boolean).length;
+  return [
+    `Học viên: ${orv(eff('studentName'))}`, `Tên ứng dụng: ${orv(eff('appName'))}`, `Mô tả: ${orv(eff('appDesc'))}`,
+    `Chủ đề: ${orv(w1s('topic'))}`, `Đối tượng: ${orv(w1s('audience'))}`, `Phong cách: ${orv(w1s('style') || w1a('style'))}`,
+    `Bảng màu: Primary ${hexv('pal_p')} · Background ${hexv('pal_b')} · Text ${hexv('pal_t')}`,
+    `Login: ${orv(a.login)} | Bố cục: ${orv(a.loginLayout)}`, `Register: ${orv(a.register)} | Bố cục: ${orv(a.registerLayout)}`, `Home: ${orv(a.home)} | Bố cục: ${orv(a.homeLayout)}`,
+    `Widget dự kiến: ${Array.isArray(a.widgets) && a.widgets.length ? a.widgets.join(', ') : EMPTY}`,
+    `Mức 1: ${orv(a.lvl1)}`, `Mức 2: ${orv(a.lvl2)}`, `Mức 3: ${orv(a.lvl3)}`,
+    `Checklist Tuần 1: ${cnt}/5`
+  ].join('\n');
+}
+function buildDossier() {
+  const wp = weekPercents();
+  const rows = allWidgetRows().map((r) => `- [${r.win}] ${r.name || EMPTY} (${r.cls})`).join('\n');
+  const bugs = S.bugs.filter((b) => (b.what || '').trim()).map((b, i) => `${i + 1}. [${b.fixed ? 'đã sửa' : 'chưa sửa'}] ${b.what.trim()}${(b.who || '').trim() ? ' (người thử: ' + b.who.trim() + ')' : ''}`).join('\n') || `- ${EMPTY}`;
+  const sc = CRIT.map((c, i) => `  ${c[0]}: ${Math.min(c[1], Math.max(0, parseInt(S.f['score' + i], 10) || 0))}/${c[1]}`).join('\n');
+  return `HỒ SƠ DỰ ÁN CÁ NHÂN 4 TUẦN\nHọc viên: ${orv(eff('studentName'))}    Lớp: ${or('studentClass')}\nTiến độ: ${WEEKS.map((w, i) => `Tuần ${w.n} ${wp[i]}%`).join(' · ')}\n\n` +
+    `=== TUẦN 1 · ${WEEKS[0].lab} ===\n${buildW1Summary()}\n\n` +
+    `=== TUẦN 2 · ${WEEKS[1].lab} ===\nGhi chú khác bản Uizard: ${or('w2Notes')}\nTên widget:\n${rows}\n\n` +
+    `=== TUẦN 3 · ${WEEKS[2].lab} ===\nCách lưu tài khoản: ${storageMode() === 'mem' ? 'chỉ trong bộ nhớ' : 'file users.json'}\nCa kiểm thử đạt: ${nCheck(ckeys('w3t', 7))}/7\nGhi chú lỗi: ${or('w3Notes')}\n\n` +
+    `=== TUẦN 4 · ${WEEKS[3].lab} ===\nLỗi từ kiểm thử chéo:\n${bugs}\nChức năng riêng: ${or('custName')}\n  Dữ liệu: ${or('custData')}\n  Widget: ${or('custWidget')}\n  Lớp và phương thức: ${or('custFunc')}\n  Cách kiểm thử: ${or('custTest')}\nTự chấm: ${totalScore()}/100\n${sc}\nKhó nhất: ${or('w4Hard')}\nĐã học được: ${or('w4Learn')}\nSẽ làm tiếp: ${or('w4Next')}\n`;
+}
+function reportKey(sid, n) { return sid + '_' + n; }
+function buildReport() {
+  const T = S.teacher;
+  const st = T.students.find((s) => s.id === T.sid);
+  if (!st) return 'Chọn một học viên để tạo phiếu.';
+  const wk = WEEKS.find((x) => x.n === T.n) || WEEKS[0];
+  const r = T.reports[reportKey(st.id, wk.n)] || {};
+  const lv = STATUS.find((x) => x[0] === (st.st[wk.n - 1] || ''));
+  const nx = WEEKS.find((x) => x.n === wk.n + 1);
+  const next = nx ? nx.goal : 'Thuyết trình và demo sản phẩm cuối khóa';
+  return `PHIẾU BÁO CÁO TIẾN ĐỘ – TUẦN ${wk.n}: ${wk.name}\nHọc viên: ${st.name}    Ngày báo cáo: ${orv(r.date)}\nSản phẩm: ${orv(st.project)}\n\n` +
+    `1. Mục tiêu của tuần (bài nộp ${wk.lab}): ${wk.goal}\n2. Đã hoàn thành: ${orv(r.done)}\n3. Chưa hoàn thành và lý do: ${orv(r.notdone)}\n4. Mức tiến độ: ${lv[0] ? lv[1] : EMPTY}\n` +
+    `5. Điểm nổi bật của học viên: ${orv(r.strength)}\n6. Điều cần cải thiện: ${orv(r.improve)}\n7. Gia đình có thể hỗ trợ: ${orv(r.family)}\n8. Mục tiêu tuần sau: ${next}`;
+}
+function csvCell(s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; }
+function buildCsv() {
+  const head = ['Học viên', 'Sản phẩm'].concat(WEEKS.map((w) => 'Tuần ' + w.n));
+  const lab = (x) => (STATUS.find((s) => s[0] === (x || '')) || STATUS[0])[1];
+  const rows = S.teacher.students.map((s) => [s.name, s.project].concat([0, 1, 2, 3].map((i) => lab(s.st[i]))));
+  return '\ufeff' + [head].concat(rows).map((r) => r.map(csvCell).join(',')).join('\r\n');
+}
+function simRegister(user, pass, confirm, exists) {
+  const u = (user || '').trim();
+  if (!/^[\p{L}\p{N}]{3,20}$/u.test(u)) return { ok: false, msg: 'Tên đăng nhập gồm 3-20 ký tự, chỉ chữ hoặc số' };
+  if ((pass || '').length < 6) return { ok: false, msg: 'Mật khẩu tối thiểu 6 ký tự' };
+  if (pass !== confirm) return { ok: false, msg: 'Mật khẩu nhập lại không khớp' };
+  if (exists) return { ok: false, msg: 'Tên đăng nhập đã tồn tại' };
+  return { ok: true, msg: 'Đăng ký thành công' };
+}
+/*ENDPURE*/
+
+(function () {
+  const STORE = 'apa-hub-4-tuan-v1';
+  const PAGES = [].concat(
+    WEEKS.map((w) => [w.slug, `Tuần ${w.n} · ${['Ý tưởng & Uizard', 'Giao diện Qt', 'Python', 'Kiểm thử & Demo'][w.n - 1]}`, String(w.n)]),
+    [['ho-so', 'Hồ sơ nộp', 'HS'], ['giao-vien', 'Dành cho giáo viên', 'GV']]);
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (raw) {
+      const sv = JSON.parse(raw);
+      S = Object.assign(def(), sv);
+      S.teacher = Object.assign(def().teacher, sv.teacher || {});
+      if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
+    }
+  } catch (e) { /* vẫn chạy khi không có bộ nhớ trình duyệt */ }
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let saveTimer = null;
+  function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
+  let toastTimer = null;
+  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2400); }
+
+  /* ---------- Đọc dữ liệu Tuần 1 (chỉ đọc) ---------- */
+  let lastRaw = null;
+  function pollW1() {
+    let raw = null;
+    try { raw = localStorage.getItem(W1_KEY); } catch (e) {}
+    if (raw === lastRaw) return;
+    lastRaw = raw;
+    try { W1 = raw ? JSON.parse(raw) : null; } catch (e) { W1 = null; }
+    refresh();
+  }
+
+  /* ---------- Bộ dựng HTML tĩnh ---------- */
+  function fld(key, label, o) {
+    o = o || {};
+    const id = 'f_' + key;
+    const a = `id="${id}" data-f="${key}"${o.ph ? ` placeholder="${o.ph}"` : ''}`;
+    const ctl = o.area ? `<textarea ${a} rows="${o.rows || 3}"></textarea>`
+      : o.sel ? `<select ${a}>${o.sel.map((x) => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>`
+      : `<input type="${o.type || 'text'}" ${a} autocomplete="off">`;
+    return `<div class="field"><label for="${id}">${label}</label>${ctl}${o.hint ? `<div class="hint">${o.hint}</div>` : ''}</div>`;
+  }
+  const chk = (key, label, cls) => `<label class="${cls || 'checkrow'}"><input type="checkbox" data-c="${key}"><span>${label}</span></label>`;
+  const chkList = (p, arr) => `<div class="checklist">${arr.map((t, i) => chk(p + (i + 1), t)).join('')}</div>`;
+  const codeBlock = (out, copyLabel, dl) => `<div class="codebox" data-out="${out}"></div><div class="actions"><button class="btn primary" type="button" data-copy="${out}">${copyLabel || 'Sao chép'}</button>${dl ? `<button class="btn outline" type="button" data-dl="${out}" data-fn="${dl}" hidden>Tải về</button>` : ''}</div>`;
+
+  function head(step, title, lead, time) {
+    return `<div class="panel-head"><div><div class="step">${step}</div><h2>${title}</h2><p class="lead">${lead}</p></div><span class="time">${time}</span></div>`;
+  }
+  function panel(slug, step, title, lead, time, tabs) {
+    const idx = PAGES.findIndex((p) => p[0] === slug);
+    const nav = `<div class="subtabs" role="tablist">${tabs.map((t, i) => `<button type="button" data-tab="${slug}:${t[0]}" class="${i ? '' : 'active'}">${i + 1}. ${t[1]}</button>`).join('')}</div>`;
+    const body = tabs.map((t, i) => {
+      const prev = i > 0 ? `<button class="btn secondary" type="button" data-tab="${slug}:${tabs[i - 1][0]}">← ${tabs[i - 1][1]}</button>`
+        : `<button class="btn secondary" type="button" data-go="${PAGES[idx - 1][0]}">← ${PAGES[idx - 1][1]}</button>`;
+      const next = i < tabs.length - 1 ? `<button class="btn primary" type="button" data-tab="${slug}:${tabs[i + 1][0]}">${tabs[i + 1][1]} →</button>`
+        : `<button class="btn primary" type="button" data-go="${PAGES[idx + 1][0]}">${PAGES[idx + 1][1]} →</button>`;
+      return `<div class="sub ${i ? '' : 'on'}" data-sub="${slug}:${t[0]}">${t[2]}<div class="btnrow">${prev}${next}</div></div>`;
+    }).join('');
+    return `<section class="panel" id="p-${slug}" data-slug="${slug}">${head(step, title, lead, time)}${nav}${body}</section>`;
+  }
+
+  const week1 = `<section class="panel active" id="p-tuan-1" data-slug="tuan-1">
+ ${head('01 · Nộp: Lab10', 'Lên ý tưởng AI & Mẫu Uizard', 'Trang Tuần 1 do giáo viên chốt, nhúng nguyên vẹn bên dưới. Dữ liệu em điền ở đây được dùng lại ở các tuần sau.', 'Tuần 1')}
+ <div class="actions" style="margin:0 0 10px"><a class="btn outline small" href="week1.html" target="_blank" rel="noopener">Mở Tuần 1 ở cửa sổ riêng ↗</a><button class="btn secondary small" type="button" id="w1Refresh">Cập nhật dữ liệu Tuần 1</button></div>
+ <iframe id="w1frame" class="w1frame" src="week1.html" title="Tuần 1: Lên ý tưởng AI và Uizard"></iframe>
+ <details style="margin-top:14px"><summary class="tiny" style="cursor:pointer;font-weight:700">Dữ liệu dùng cho Tuần 2–4 (lớp, nhập tay nếu không tự nhận được từ Tuần 1)</summary>
+  <div class="grid2">${fld('studentName', 'Họ và tên học sinh', { ph: 'Tự điền từ Tuần 1 nếu có' })}${fld('studentClass', 'Lớp', { ph: 'Ví dụ: 8A1' })}</div>
+  <div class="grid2">${fld('appName', 'Tên ứng dụng', { ph: 'Để trống để dùng tên từ Tuần 1' })}${fld('appDesc', 'Mô tả ngắn', { ph: 'Để trống để dùng mô tả từ Tuần 1' })}</div>
+  <div class="grid3">${fld('pal_p', 'Màu chủ đạo (HEX)', { ph: '#4F46E5' })}${fld('pal_b', 'Màu nền (HEX)', { ph: '#F1F5F9' })}${fld('pal_t', 'Màu chữ (HEX)', { ph: '#1E293B' })}</div>
+  <p class="tiny" style="margin-top:10px">Dữ liệu em nhập chỉ lưu trong trình duyệt này. Nộp bài bằng nút Sao chép hoặc Tải về theo hướng dẫn của giáo viên. Không nhập mật khẩu hay địa chỉ thật.</p>
+  <div class="actions"><button class="btn danger small" type="button" id="resetAll">Xóa dữ liệu Tuần 2–4 và làm lại</button></div>
+ </details>
+ <div class="btnrow"><span></span><button class="btn primary" type="button" data-go="tuan-2">Tuần 2 · Giao diện Qt →</button></div>
+</section>`;
+
+  const w2a = `<div class="callout"><strong>Mục tiêu tuần 2</strong>Biến 3 bản mẫu Uizard thành 3 file giao diện Qt Designer: <code>login.ui</code>, <code>register.ui</code>, <code>home.ui</code>. Mỗi file là một form riêng; ở Tuần 3 chương trình mở từng form khi cần.</div>
+ <h3>Đặc tả em đã chốt ở Tuần 1</h3>
+ <div data-outhtml="w1specs"></div>
+ <h3>Cách tạo mỗi file</h3>
+ <ol><li>Mở Qt Designer như đã làm ở lớp, chọn mẫu <b>Main Window</b> cho mỗi form. Khi đó lớp sinh ra ở Tuần 3 mang tên <code>Ui_MainWindow</code>, và <code>main.py</code> mẫu dựa vào tên này.</li><li>Dựng đúng thành phần theo đặc tả ở trên, nhìn bản mẫu Uizard để bố trí.</li><li>Lưu thành <code>login.ui</code>, <code>register.ui</code>, <code>home.ui</code> trong cùng một thư mục.</li></ol>
+ ${chkList('w2a', ['Mỗi form tạo từ mẫu <b>Main Window</b> và lưu đúng tên file.', 'Mỗi form dùng layout (<code>QVBoxLayout</code>, <code>QHBoxLayout</code>, <code>QGridLayout</code>), không đặt widget bằng kéo thả tự do.', 'Ô mật khẩu đặt <code>echoMode = Password</code>.', 'Xem trước (Form → Preview) không vỡ bố cục khi kéo to/nhỏ cửa sổ.'])}`;
+  const w2b = `<p class="lead" style="margin-bottom:12px">Đặt <code>objectName</code> theo quy ước <b>tiền tố + Tên</b>. Tuần 3 dùng đúng các tên này trong code, nên đặt sai là code báo lỗi thiếu thuộc tính.</p>
+ <div class="callout"><strong>Quy ước tiền tố</strong>txt (ô nhập) · btn (nút) · lbl (nhãn) · chk (ô chọn) · cbo (danh sách thả xuống) · frm (khung) · tbl (bảng) · dte (ngày) · pbr (thanh tiến độ). Bảng chia theo 3 form; tên chỉ cần không trùng trong cùng một form.</div>
+ <div class="names" id="namesTable"></div>
+ <div class="actions"><button class="btn outline small" type="button" id="addCustomName">Thêm widget riêng</button></div>
+ <div class="meter"><span class="big" data-outhtml="namesNum">0</span><span>tên chưa hợp lệ</span></div>`;
+  const w2c = `<p class="lead" style="margin-bottom:12px">StyleSheet mẫu bên dưới dùng đúng bảng màu em chốt ở Tuần 1 (đang dùng: <span data-outhtml="palText"></span>).</p>
+ <p class="tiny">Dán vào thuộc tính <code>styleSheet</code> của cửa sổ chính trong Qt Designer (Property Editor), làm cho cả 3 form. Đây là mẫu khởi đầu theo cú pháp Qt StyleSheet, chưa được chạy thử trong Qt; em xem kết quả trong Preview rồi chỉnh tiếp.</p>
+ ${codeBlock('qss', 'Sao chép StyleSheet')}
+ ${chkList('w2s', ['Đã áp StyleSheet cho cả 3 form.', 'Màu và chữ nhất quán giữa 3 form.', 'Giao diện giống bản mẫu Uizard ở mức hợp lý.'])}
+ ${fld('w2Notes', 'Điểm khác bản Uizard và lý do', { area: 1 })}`;
+  const w2d = `${chkList('w2d', ['Đã nộp <code>login.ui</code> hoàn chỉnh.', 'Đã nộp <code>register.ui</code> hoàn chỉnh.', 'Đã nộp <code>home.ui</code> hoàn chỉnh.'])}
+ <div class="callout"><strong>Nộp bài: Lab11</strong>Ba file <code>.ui</code> kèm ảnh chụp cửa sổ xem trước của từng form. Bảng tên widget nằm trong hồ sơ ở mục Hồ sơ nộp.</div>`;
+
+  const w3a = `<div class="callout"><strong>Mục tiêu tuần 3</strong>Chạy được luồng Đăng ký → Đăng nhập → Trang chủ → Đăng xuất, có lưu tài khoản. Các file đặt chung một thư mục:</div>
+ <div class="codebox" style="max-height:none">du-an/\n├─ login.ui, register.ui, home.ui      (từ Qt Designer, tuần 2)\n├─ ui_login.py, ui_register.py, ui_home.py   (sinh bằng pyuic6, không sửa tay)\n├─ auth.py        (đăng ký, đăng nhập, lưu tài khoản)\n├─ main.py        (mở các form và nối nút bấm)\n└─ users.json     (tự tạo khi đăng ký, nếu chọn lưu file)</div>
+ <h3>Chuyển file .ui thành mã Python</h3>
+ ${codeBlock('cmd', 'Sao chép lệnh')}
+ <div class="callout warn"><strong>Hai điều cần nhớ</strong>Chạy lại lệnh mỗi khi sửa file <code>.ui</code>, và không sửa tay file <code>ui_*.py</code> vì lần sinh sau sẽ ghi đè. Nguồn lệnh: <a href="https://www.pythonguis.com/tutorials/pyqt6-first-steps-qt-designer/" target="_blank" rel="noopener">Python GUIs · Qt Designer với PyQt6</a>. Nếu giáo viên dạy cách khác (ví dụ <code>uic.loadUi</code>), em làm theo cách đã học trên lớp.</div>
+ ${chkList('w3a', ['Đã sinh đủ 3 file <code>ui_login.py</code>, <code>ui_register.py</code>, <code>ui_home.py</code>.', 'Có <code>main.py</code> và <code>auth.py</code> cùng thư mục với 3 file giao diện.', 'Chạy <code>python main.py</code> thấy form Đăng nhập hiện lên.', 'Nút sang Đăng ký và nút quay lại Đăng nhập hoạt động.'])}`;
+  const w3b = `<p class="lead" style="margin-bottom:12px">Tài khoản là các đối tượng <code>User</code> trong một danh sách; lớp <code>AuthService</code> không dính đến giao diện nên em chạy thử riêng được. Mật khẩu được băm trước khi lưu, không lưu dạng văn bản thô.</p>
+ ${fld('storage', 'Cách lưu tài khoản', { sel: [['file', 'Lưu vào file users.json (theo lộ trình Tuần 3)'], ['mem', 'Chỉ trong bộ nhớ (nếu lớp chưa học đọc/ghi JSON)']] })}
+ <div class="callout warn"><strong>Về chọn cách lưu</strong>Lộ trình Tuần 3 ghi “lưu tài khoản vào file”, nên mặc định là file JSON. Trong tài liệu khóa PTA, đọc/ghi JSON xuất hiện ở khóa tiếp theo (PTI), nên nếu học sinh chưa học thì chọn phương án bộ nhớ: tài khoản mất khi tắt chương trình. Giáo viên quyết định theo trình độ lớp.</div>
+ <div class="codebox" data-out="authPy" style="max-height:none"></div><div class="actions"><button class="btn primary" type="button" data-copy="authPy">Sao chép auth.py</button><button class="btn outline" type="button" data-dl="authPy" data-fn="auth.py" hidden>Tải về</button></div>
+ <div class="callout warn"><strong>Giới hạn về mật khẩu</strong>Băm SHA-256 không muối chỉ đủ cho bài học. Sản phẩm thật cần cách băm chuyên dụng. Chỉ dùng mật khẩu thử, không dùng mật khẩu thật.</div>
+ <h3>Thử luật kiểm tra</h3>
+ <p class="tiny">Bản mô phỏng chạy trong trình duyệt để em thấy luật kiểm tra hoạt động như <code>register()</code> và <code>login()</code>. Tài khoản chỉ tồn tại trong lần mở trang này.</p>
+ <div class="grid3"><div class="field"><label for="simU">Tên đăng nhập</label><input id="simU" autocomplete="off"></div><div class="field"><label for="simP">Mật khẩu</label><input id="simP" type="password" autocomplete="off"></div><div class="field"><label for="simC">Nhập lại mật khẩu (khi đăng ký)</label><input id="simC" type="password" autocomplete="off"></div></div>
+ <div class="actions"><button class="btn primary" type="button" id="simReg">Đăng ký</button><button class="btn outline" type="button" id="simLogin">Đăng nhập</button></div>
+ <div class="callout" id="simOut" style="margin-top:12px" aria-live="polite">Kết quả sẽ hiện ở đây.</div>`;
+  const w3c = `<p class="lead" style="margin-bottom:12px">Mã tự đổi theo tên widget em đặt ở Tuần 2. Mỗi form là một lớp riêng; chuyển màn hình bằng cách hiện form mới rồi ẩn hoặc đóng form cũ. Lỗi hiện bằng <code>QMessageBox</code>.</p>
+ <div class="callout warn" data-outhtml="mainWarn" style="display:none"></div>
+ ${codeBlock('mainPy', 'Sao chép main.py', 'main.py')}
+ <div class="callout"><strong>Thứ tự làm</strong>Chép <code>auth.py</code>, rồi <code>main.py</code>, chạy từng ca ở mục Kiểm thử.</div>`;
+  const w3d = `<p class="lead" style="margin-bottom:12px">Tự chạy từng ca và đánh dấu khi kết quả đúng như mong đợi.</p>
+ <div class="checklist">${TESTS.map((t, i) => chk('w3t' + (i + 1), `<b>${i + 1}. ${t[0]}</b><br>Mong đợi: ${t[1]}`)).join('')}</div>
+ ${fld('w3Notes', 'Lỗi em gặp và cách đã sửa', { area: 1 })}`;
+  const w3e = `${chkList('w3d', ['Tài khoản đăng ký được lưu đúng cách đã chọn (nếu lưu file, mở lại chương trình vẫn đăng nhập được).', 'Chạy được 3 luồng: đăng ký, đăng nhập đúng, đăng nhập sai.', 'Đã qua cả 7 ca kiểm thử.', 'Em giải thích được từng đoạn code mình nộp.'])}
+ <div class="callout"><strong>Nộp bài: Lab12</strong>Thư mục mã nguồn (không gồm file <code>users.json</code> có dữ liệu thật) và ảnh chụp 3 luồng chạy.</div>`;
+
+  const w4a = `<p class="lead" style="margin-bottom:12px">Đổi máy với một bạn. Bạn dùng thử khi không được hướng dẫn; em ghi lại lỗi bạn gặp rồi sửa.</p>
+ <div class="rows" id="bugRows"></div><div class="actions"><button class="btn outline small" type="button" id="addBug">Thêm lỗi</button></div>`;
+  const w4b = `<p class="lead" style="margin-bottom:12px">Hoàn thiện sản phẩm cá nhân: ít nhất một chức năng riêng. Em lập kế hoạch trước khi viết mã.</p>
+ <h3>Chức năng em đã dự kiến ở Tuần 1</h3>
+ <div data-outhtml="w1levels"></div>
+ ${fld('custName', 'Chức năng riêng em chọn làm', { ph: 'Ví dụ: Thêm khoản chi' })}
+ ${fld('custData', 'Dữ liệu cần lưu', { ph: 'Ví dụ: số tiền, ngày, ghi chú' })}
+ ${fld('custWidget', 'Widget sẽ dùng', { ph: 'Ví dụ: QLineEdit, QDateEdit, QTableWidget' })}
+ ${fld('custFunc', 'Lớp và phương thức Python sẽ viết', { ph: 'Ví dụ: lớp Expense, phương thức add_expense(amount, date, note)' })}
+ ${fld('custTest', 'Cách kiểm thử', { area: 1, ph: 'Ví dụ: thêm 3 khoản, kiểm tra bảng hiện đủ 3 dòng' })}`;
+  const w4c = `<div class="callout warn"><strong>Thời lượng và cấu trúc</strong>Lộ trình ghi demo 3–5 phút. Năm phần dưới đây chia sẵn 5 phút (mức tối đa); giáo viên chỉnh cấu trúc và thời gian nếu khác.</div>
+ <div class="timer"><div class="big" id="tmClock">5:00</div><div id="tmSeg" class="tiny">Sẵn sàng. Tổng 5 phút.</div><div class="segbar" id="tmBar">${SEGS.map((s) => `<div class="seg" style="flex:${s[1]}"><i></i></div>`).join('')}</div><div class="actions"><button class="btn primary" type="button" id="tmGo">Bắt đầu</button><button class="btn outline" type="button" id="tmReset">Đặt lại</button></div></div>
+ <div class="seglist" id="segList">${SEGS.map((s, i) => `<div class="segitem" data-seg="${i}"><div class="t">${Math.floor(s[1] / 60) ? Math.floor(s[1] / 60) + ' phút ' : ''}${s[1] % 60 ? s[1] % 60 + ' giây' : ''}</div><div><b>${s[0]}</b><div class="field" style="margin:6px 0 0"><textarea id="f_talk${i}" data-f="talk${i}" rows="2" aria-label="Em sẽ nói gì: ${s[0]}" placeholder="Em sẽ nói gì ở phần này?"></textarea></div></div></div>`).join('')}</div>
+ ${chkList('w4p', ['Đã làm xong slide.', 'Đã tập nói đủ thời gian ít nhất một lần.', 'Đã quay sẵn video demo ngắn để dự phòng khi máy trình chiếu lỗi.', 'Đã chuẩn bị trả lời: vì sao em chọn đề tài, phần khó nhất, và em đã tự làm phần nào.'])}`;
+  const w4d = `<p class="lead" style="margin-bottom:12px">Tự chấm để đối chiếu với giáo viên. Tiêu chí dưới đây là bản nháp của web; điểm và tiêu chí chính thức do giáo viên quyết định.</p>
+ ${CRIT.map((c, i) => `<div class="rub"><div><b>${c[0]}</b><div class="tiny">${c[2]}</div></div><input type="range" min="0" max="${c[1]}" step="1" value="0" id="f_score${i}" data-f="score${i}" aria-label="Điểm ${c[0]}"><div class="sc" id="sc${i}">0/${c[1]}</div></div>`).join('')}
+ <div class="meter"><span class="big" data-outhtml="scoreTotal">0</span><span>/ 100 điểm tự chấm</span></div>`;
+  const w4e = `${chkList('w4d', ['Đã đổi máy kiểm thử chéo với một bạn và sửa các lỗi đã ghi.', 'Sản phẩm có ít nhất 1 chức năng riêng chạy được.', 'Đã tập thuyết trình và demo trực tiếp.', 'Em giải thích được từng đoạn code mình nộp.'])}
+ ${fld('w4Hard', 'Điều khó nhất em gặp', { area: 1 })}${fld('w4Learn', 'Điều em học được', { area: 1 })}${fld('w4Next', 'Em sẽ làm gì tiếp với ứng dụng này', { area: 1 })}
+ <div class="callout"><strong>Nộp bài: SPCK_Final</strong>Mã nguồn (<code>main.py</code>, <code>auth.py</code>, <code>ui_*.py</code>, 3 file <code>.ui</code>) và bài thuyết trình.</div>`;
+
+  const dossier = `<section class="panel" id="p-ho-so" data-slug="ho-so">
+ ${head('HS · Hồ sơ', 'Hồ sơ dự án cá nhân', 'Tổng hợp mọi thứ em đã làm trong 4 tuần, gồm cả dữ liệu từ Tuần 1. Sao chép hoặc tải về để nộp cho giáo viên.', 'Cuối khóa')}
+ <div data-outhtml="weekBars"></div>
+ <div class="actions"><button class="btn primary" type="button" data-copy="dossier">Sao chép hồ sơ</button><button class="btn outline" type="button" data-dl="dossier" data-fn="ho-so-du-an-{name}.txt" hidden>Tải về (.txt)</button></div>
+ <p class="tiny">Ảnh Uizard em đính kèm ở Tuần 1 không nằm trong bản văn bản này; em nộp các ảnh đó theo Project Brief của Tuần 1.</p>
+ <h3>Xem trước</h3><div class="codebox" data-out="dossier" style="max-height:460px"></div>
+ <div class="btnrow"><button class="btn secondary" type="button" data-go="tuan-4">← Tuần 4</button><span></span></div>
+</section>`;
+
+  const teacher = `<section class="panel" id="p-giao-vien" data-slug="giao-vien">
+ ${head('GV · Giáo viên', 'Theo dõi tiến độ và báo cáo phụ huynh', 'Mỗi tuần, thầy đánh giá từng học viên và tạo phiếu báo cáo gửi phụ huynh. Dữ liệu ở đây chỉ lưu trên trình duyệt của thầy.', 'Mỗi tuần')}
+ <div class="callout warn"><strong>Lưu ý</strong>Trang này không tự thấy bài của học viên, vì mỗi em lưu dữ liệu trên máy của mình. Thầy xem hồ sơ em nộp bằng bản sao chép hoặc file tải về, rồi ghi mức tiến độ vào bảng dưới đây.</div>
+ <h3>Danh sách học viên</h3>
+ <div class="grid2"><div class="field"><label for="tName">Họ và tên</label><input id="tName" autocomplete="off"></div><div class="field"><label for="tProject">Tên sản phẩm</label><input id="tProject" autocomplete="off"></div></div>
+ <div class="actions"><button class="btn primary" type="button" id="tAdd">Thêm học viên</button></div>
+ <div class="rows" id="tRows" style="margin-top:12px"></div>
+ <div class="sumbars" data-outhtml="tSummary"></div>
+ <div class="callout"><strong>Tiêu chí xếp mức (đề xuất, thầy chỉnh được)</strong><b>Đúng tiến độ:</b> nộp đủ sản phẩm của tuần (Lab10, Lab11, Lab12, SPCK_Final) và qua mốc kiểm tra. <b>Cần hỗ trợ:</b> nộp thiếu hoặc chưa qua mốc, còn khả năng bù ở tuần sau. <b>Chậm:</b> chưa có sản phẩm chính của tuần; thầy trao đổi riêng với học viên và phụ huynh để điều chỉnh phạm vi.</div>
+ <div class="actions"><button class="btn outline" type="button" data-copy="csv">Sao chép bảng (CSV)</button><button class="btn outline" type="button" data-dl="csv" data-fn="bang-theo-doi-tien-do.csv" hidden>Tải bảng (.csv)</button></div>
+ <h3>Phiếu báo cáo phụ huynh</h3>
+ <div class="grid2"><div class="field"><label for="rSid">Học viên</label><select id="rSid"></select></div><div class="field"><label for="rWk">Tuần</label><select id="rWk">${WEEKS.map((w) => `<option value="${w.n}">Tuần ${w.n} · ${w.lab}</option>`).join('')}</select></div></div>
+ <div class="grid2"><div class="field"><label for="rDate">Ngày báo cáo</label><input id="rDate" placeholder="dd/mm/yyyy" autocomplete="off"></div><div class="field"><label for="rDone">Đã hoàn thành</label><textarea id="rDone" rows="2"></textarea></div></div>
+ <div class="grid2"><div class="field"><label for="rNot">Chưa hoàn thành và lý do</label><textarea id="rNot" rows="2"></textarea></div><div class="field"><label for="rStr">Điểm nổi bật của học viên (việc cụ thể)</label><textarea id="rStr" rows="2"></textarea></div></div>
+ <div class="grid2"><div class="field"><label for="rImp">Điều cần cải thiện</label><textarea id="rImp" rows="2"></textarea></div><div class="field"><label for="rFam">Gia đình có thể hỗ trợ</label><textarea id="rFam" rows="2"></textarea></div></div>
+ <div class="codebox" data-out="report" style="max-height:none"></div>
+ <div class="actions"><button class="btn primary" type="button" data-copy="report">Sao chép phiếu</button><button class="btn outline" type="button" data-dl="report" data-fn="phieu-bao-cao-tuan-{wk}-{student}.txt" hidden>Tải phiếu (.txt)</button></div>
+</section>`;
+
+  /* ---------- Dựng trang ---------- */
+  $('mainArea').innerHTML = week1 +
+    panel('tuan-2', '02 · Nộp: Lab11', 'Thiết kế giao diện Qt Designer', 'Chuyển bản mẫu Uizard thành 3 form thực tế, trang trí bằng QSS và đặt objectName chuẩn.', 'Tuần 2', [['a', 'Từ Uizard sang Qt', w2a], ['b', 'Tên widget', w2b], ['c', 'QSS & phong cách', w2c], ['d', 'Nghiệm thu', w2d]]) +
+    panel('tuan-3', '03 · Nộp: Lab12', 'Lập trình chức năng Python', 'Nối 3 form với logic: đăng ký, lưu tài khoản, đăng nhập và chuyển màn hình.', 'Tuần 3', [['a', 'Chuẩn bị', w3a], ['b', 'auth.py', w3b], ['c', 'main.py', w3c], ['d', 'Kiểm thử', w3d], ['e', 'Nghiệm thu', w3e]]) +
+    panel('tuan-4', '04 · Nộp: SPCK_Final', 'Kiểm thử & Thuyết trình', 'Kiểm thử chéo, hoàn thiện ứng dụng cá nhân và chuẩn bị demo trước lớp.', 'Tuần 4', [['a', 'Kiểm thử chéo', w4a], ['b', 'Chức năng riêng', w4b], ['c', 'Thuyết trình', w4c], ['d', 'Tự chấm', w4d], ['e', 'Nghiệm thu', w4e]]) +
+    dossier + teacher;
+
+  const nav = $('navigation');
+  PAGES.forEach((p, i) => {
+    if (i === PAGES.length - 1) { const s = document.createElement('div'); s.className = 'navsep'; nav.appendChild(s); }
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'navbtn' + (i === 0 ? ' active' : ''); b.dataset.go = p[0];
+    b.innerHTML = `<span class="navnum">${p[2]}</span><span>${p[1]}</span>`; nav.appendChild(b);
+  });
+
+  /* ---------- Điều hướng ---------- */
+  let current = 'tuan-1';
+  function showPage(slug) {
+    if (!PAGES.some((p) => p[0] === slug)) slug = 'tuan-1';
+    current = slug;
+    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.dataset.slug === slug));
+    nav.querySelectorAll('.navbtn').forEach((b) => b.classList.toggle('active', b.dataset.go === slug));
+    try { history.replaceState(null, '', '#' + slug); } catch (e) { try { location.hash = slug; } catch (e2) {} }
+    try { window.scrollTo({ top: 0 }); } catch (e) {}
+    if (slug === 'giao-vien') renderTeacher();
+    if (slug === 'tuan-1') fitFrame();
+    pollW1(); refresh();
+  }
+  function showTab(slug, tab) {
+    if (current !== slug) showPage(slug);
+    document.querySelectorAll(`[data-sub^="${slug}:"]`).forEach((s) => s.classList.toggle('on', s.dataset.sub === `${slug}:${tab}`));
+    document.querySelectorAll(`.subtabs [data-tab^="${slug}:"]`).forEach((b) => b.classList.toggle('active', b.dataset.tab === `${slug}:${tab}`));
+    try { window.scrollTo({ top: 0 }); } catch (e) {}
+    refresh();
+  }
+  document.addEventListener('click', (ev) => {
+    const g = ev.target.closest('[data-go]'); if (g) { showPage(g.dataset.go); return; }
+    const t = ev.target.closest('[data-tab]'); if (t) { const [s, tb] = t.dataset.tab.split(':'); showTab(s, tb); }
+  });
+  window.addEventListener('hashchange', () => { const h = location.hash.replace('#', ''); if (h && h !== current) showPage(h); });
+
+  /* ---------- Khung Tuần 1 ---------- */
+  function fitFrame() {
+    const fr = $('w1frame');
+    try { const d = fr.contentDocument; if (d && d.documentElement) fr.style.height = Math.max(d.documentElement.scrollHeight, 760) + 'px'; } catch (e) { /* khác nguồn: giữ chiều cao mặc định */ }
+  }
+  $('w1frame').addEventListener('load', () => { fitFrame(); setTimeout(fitFrame, 800); });
+  setInterval(() => { if (current === 'tuan-1') { fitFrame(); pollW1(); } }, 1200);
+  window.addEventListener('storage', pollW1);
+  $('w1Refresh').addEventListener('click', () => { lastRaw = null; pollW1(); toast(W1 ? 'Đã cập nhật dữ liệu Tuần 1' : 'Chưa nhận được dữ liệu Tuần 1. Hãy điền và lưu ở Tuần 1.'); });
+
+  /* ---------- Ô nhập ---------- */
+  function bindStatic() {
+    document.querySelectorAll('[data-f]').forEach((el) => {
+      const k = el.dataset.f;
+      if (S.f[k] !== undefined) el.value = S.f[k];
+      else if (el.tagName === 'SELECT') S.f[k] = el.value;
+      const h = () => { S.f[k] = el.value; save(); refresh(); };
+      el.addEventListener('input', h); el.addEventListener('change', h);
+    });
+    document.querySelectorAll('[data-c]').forEach((el) => {
+      const mark = () => { const box = el.closest('.checkrow,.widget'); if (box && !el.disabled) box.classList.toggle('done', el.checked); };
+      el.checked = !!S.c[el.dataset.c]; mark();
+      el.addEventListener('change', () => { S.c[el.dataset.c] = el.checked; mark(); save(); refresh(); });
+    });
+  }
+
+  /* ---------- Danh sách động ---------- */
+  function mkField(label, value, onInput, o) {
+    o = o || {};
+    const w = document.createElement('div'); w.className = 'field'; w.style.margin = '0';
+    const l = document.createElement('label'); l.textContent = label; w.appendChild(l);
+    const inp = document.createElement(o.area ? 'textarea' : 'input');
+    if (o.area) { inp.rows = 2; } else { inp.type = 'text'; }
+    inp.value = value || ''; inp.autocomplete = 'off';
+    inp.addEventListener('input', () => onInput(inp.value)); w.appendChild(inp);
+    return { w, inp };
+  }
+  function renderBugs() {
+    const box = $('bugRows'); box.textContent = '';
+    S.bugs.forEach((b, i) => {
+      const c = document.createElement('div'); c.className = 'entry';
+      const h = document.createElement('h4'); const t = document.createElement('span'); t.textContent = 'Lỗi ' + (i + 1); h.appendChild(t);
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn danger small'; rm.textContent = 'Xóa'; rm.addEventListener('click', () => { S.bugs.splice(i, 1); if (!S.bugs.length) S.bugs.push({ who: '', what: '', fixed: false }); save(); renderBugs(); refresh(); }); h.appendChild(rm);
+      const lab = document.createElement('label'); lab.className = 'checkrow'; const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!b.fixed;
+      cb.addEventListener('change', () => { b.fixed = cb.checked; lab.classList.toggle('done', cb.checked); save(); refresh(); }); lab.classList.toggle('done', cb.checked);
+      const sp = document.createElement('span'); sp.textContent = 'Đã sửa'; lab.append(cb, sp);
+      c.append(h, mkField('Người thử', b.who, (x) => { b.who = x; save(); refresh(); }).w, mkField('Lỗi gặp phải và cách tái hiện', b.what, (x) => { b.what = x; save(); refresh(); }, { area: 1 }).w, lab);
+      box.appendChild(c);
+    });
+  }
+  $('addBug').addEventListener('click', () => { S.bugs.push({ who: '', what: '', fixed: false }); save(); renderBugs(); refresh(); });
+
+  const WIN_TITLES = { login: 'login.ui · Đăng nhập', register: 'register.ui · Đăng ký', home: 'home.ui · Trang chủ', custom: 'Widget riêng của ứng dụng' };
+  function renderNames() {
+    const box = $('namesTable'); box.textContent = '';
+    const head = document.createElement('div'); head.className = 'nrow head'; head.innerHTML = '<span>Vai trò</span><span>Lớp Qt</span><span>objectName</span><span>Kiểm tra</span>'; box.appendChild(head);
+    let lastWin = '';
+    allWidgetRows().forEach((r) => {
+      if (r.win !== lastWin) { lastWin = r.win; const g = document.createElement('div'); g.className = 'grp'; g.textContent = WIN_TITLES[r.win]; box.appendChild(g); }
+      const row = document.createElement('div'); row.className = 'nrow'; row.dataset.rid = r.id;
+      const d = document.createElement('span'); d.textContent = r.desc;
+      const k = document.createElement('span'); k.className = 'cls';
+      let inp;
+      if (r.id.startsWith('custom')) {
+        const i = Number(r.id.slice(6));
+        const sel = document.createElement('select'); sel.className = 'inp'; sel.setAttribute('aria-label', 'Lớp Qt');
+        CUSTOM_CLASSES.forEach((c) => { const o = document.createElement('option'); o.textContent = c; if (c === S.custom[i].cls) o.selected = true; sel.appendChild(o); });
+        sel.addEventListener('change', () => { S.custom[i].cls = sel.value; save(); refresh(); });
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn danger small'; rm.textContent = 'Xóa'; rm.style.marginLeft = '6px';
+        rm.addEventListener('click', () => { S.custom.splice(i, 1); save(); renderNames(); refresh(); });
+        k.append(sel);
+        inp = document.createElement('input'); inp.className = 'inp'; inp.value = S.custom[i].name || ''; inp.setAttribute('aria-label', 'objectName widget riêng');
+        inp.addEventListener('input', () => { S.custom[i].name = inp.value; save(); refresh(); });
+        d.append(' ', rm);
+      } else {
+        k.textContent = r.cls;
+        inp = document.createElement('input'); inp.className = 'inp'; inp.value = r.name; inp.setAttribute('aria-label', 'objectName: ' + r.desc);
+        inp.addEventListener('input', () => { S.names[r.id] = inp.value; save(); refresh(); });
+      }
+      const st = document.createElement('span'); st.className = 'st';
+      row.append(d, k, inp, st); box.appendChild(row);
+    });
+  }
+  $('addCustomName').addEventListener('click', () => { S.custom.push({ cls: 'QPushButton', name: '' }); save(); renderNames(); refresh(); });
+  function updateNameStatus() {
+    const iss = nameIssues();
+    document.querySelectorAll('#namesTable .nrow[data-rid]').forEach((row) => {
+      const m = iss[row.dataset.rid]; const st = row.querySelector('.st');
+      st.textContent = m ? m : 'Hợp lệ'; st.className = 'st ' + (m ? 'bad' : 'ok');
+    });
+    return Object.values(iss).filter(Boolean).length;
+  }
+
+  /* ---------- Đồng hồ thuyết trình ---------- */
+  const TOTAL = SEGS.reduce((a, s) => a + s[1], 0);
+  let left = TOTAL, running = false, tick = null;
+  function drawTimer() {
+    const el = TOTAL - left;
+    $('tmClock').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    let acc = 0, idx = -1;
+    document.querySelectorAll('#tmBar .seg i').forEach((bar, i) => {
+      const s = SEGS[i][1]; const done = Math.min(s, Math.max(0, el - acc));
+      bar.style.width = (done / s * 100) + '%';
+      if (idx < 0 && el < acc + s) idx = i; acc += s;
+    });
+    if (left === 0) idx = -1;
+    document.querySelectorAll('#segList .segitem').forEach((it, i) => it.classList.toggle('now', i === idx && (running || el > 0)));
+    $('tmSeg').textContent = left === 0 ? 'Hết giờ.' : (idx >= 0 && (running || el > 0)) ? `Đang ở phần: ${SEGS[idx][0]}` : 'Sẵn sàng. Tổng 5 phút.';
+    $('tmGo').textContent = running ? 'Tạm dừng' : (el > 0 && left > 0 ? 'Tiếp tục' : 'Bắt đầu');
+  }
+  $('tmGo').addEventListener('click', () => {
+    if (running) { running = false; clearInterval(tick); } else {
+      if (left === 0) left = TOTAL;
+      running = true; tick = setInterval(() => { left -= 1; if (left <= 0) { left = 0; running = false; clearInterval(tick); toast('Hết giờ'); } drawTimer(); }, 1000);
+    }
+    drawTimer();
+  });
+  $('tmReset').addEventListener('click', () => { running = false; clearInterval(tick); left = TOTAL; drawTimer(); });
+
+  /* ---------- Mô phỏng đăng ký/đăng nhập ---------- */
+  const sim = [];
+  function simShow(ok, msg) { const o = $('simOut'); o.textContent = msg; o.style.borderLeftColor = ok ? '#0f9f7a' : '#b42318'; }
+  $('simReg').addEventListener('click', () => {
+    const u = $('simU').value.trim();
+    const r = simRegister($('simU').value, $('simP').value, $('simC').value, sim.some((a) => a.u === u));
+    if (r.ok) sim.push({ u, p: $('simP').value });
+    simShow(r.ok, r.msg + (r.ok ? ` (đang có ${sim.length} tài khoản)` : ''));
+  });
+  $('simLogin').addEventListener('click', () => {
+    const u = $('simU').value.trim(); const a = sim.find((x) => x.u === u);
+    if (a && a.p === $('simP').value) simShow(true, 'Đăng nhập đúng → mở form Trang chủ'); else simShow(false, 'Sai tên đăng nhập hoặc mật khẩu');
+  });
+
+  /* ---------- Giáo viên ---------- */
+  const T = () => S.teacher;
+  const uid = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  function renderTeacher() {
+    const box = $('tRows'); box.textContent = '';
+    if (!T().students.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Chưa có học viên. Thêm học viên ở trên để bắt đầu.'; box.appendChild(e); }
+    else {
+      const hd = document.createElement('div'); hd.className = 'trow head'; hd.innerHTML = '<span>Học viên</span><span>Sản phẩm</span>' + WEEKS.map((w) => `<span>Tuần ${w.n}</span>`).join('') + '<span></span>'; box.appendChild(hd);
+    }
+    T().students.forEach((s) => {
+      const r = document.createElement('div'); r.className = 'trow';
+      const n = document.createElement('b'); n.textContent = s.name; const p = document.createElement('span'); p.textContent = s.project || '';
+      r.append(n, p);
+      [0, 1, 2, 3].forEach((w) => {
+        const sel = document.createElement('select'); sel.className = 'inp'; sel.setAttribute('aria-label', `${s.name}, tuần ${w + 1}`);
+        STATUS.forEach((o) => { const op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if (o[0] === (s.st[w] || '')) op.selected = true; sel.appendChild(op); });
+        sel.addEventListener('change', () => { s.st[w] = sel.value; save(); refresh(); });
+        r.appendChild(sel);
+      });
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn danger small'; rm.textContent = 'Xóa';
+      rm.addEventListener('click', () => { T().students = T().students.filter((x) => x.id !== s.id); if (T().sid === s.id) T().sid = ''; save(); renderTeacher(); refresh(); });
+      r.appendChild(rm); box.appendChild(r);
+    });
+    const sel = $('rSid'); sel.textContent = '';
+    if (!T().students.length) { const o = document.createElement('option'); o.value = ''; o.textContent = 'Chưa có học viên'; sel.appendChild(o); }
+    T().students.forEach((s) => { const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
+    if (!T().students.some((x) => x.id === T().sid)) T().sid = T().students.length ? T().students[0].id : '';
+    sel.value = T().sid; $('rWk').value = String(T().n);
+    loadReport(); refresh();
+  }
+  const REP = { rDate: 'date', rDone: 'done', rNot: 'notdone', rStr: 'strength', rImp: 'improve', rFam: 'family' };
+  function curReport() { const k = reportKey(T().sid, T().n); if (!T().reports[k]) T().reports[k] = {}; return T().reports[k]; }
+  function todayStr() { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; }
+  function loadReport() {
+    const r = T().sid ? (T().reports[reportKey(T().sid, T().n)] || {}) : {};
+    Object.keys(REP).forEach((id) => { $(id).value = r[REP[id]] || (id === 'rDate' && T().sid ? todayStr() : ''); });
+    if (T().sid && !r.date) { curReport().date = todayStr(); }
+  }
+  Object.keys(REP).forEach((id) => $(id).addEventListener('input', () => { if (!T().sid) return; curReport()[REP[id]] = $(id).value; save(); refresh(); }));
+  $('rSid').addEventListener('change', () => { T().sid = $('rSid').value; save(); loadReport(); refresh(); });
+  $('rWk').addEventListener('change', () => { T().n = Number($('rWk').value); save(); loadReport(); refresh(); });
+  $('tAdd').addEventListener('click', () => {
+    const n = $('tName').value.trim(); if (!n) { toast('Nhập họ và tên học viên'); return; }
+    T().students.push({ id: uid(), name: n, project: $('tProject').value.trim(), st: ['', '', '', ''] });
+    $('tName').value = ''; $('tProject').value = ''; save(); renderTeacher();
+  });
+
+  /* ---------- Sao chép, tải về ---------- */
+  const OUT = { qss: buildQss, cmd: buildCmd, authPy: buildAuthPy, mainPy: buildMainPy, dossier: buildDossier, report: buildReport, csv: buildCsv };
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+    try { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; } catch (e) { return false; }
+  }
+  document.addEventListener('click', async (ev) => {
+    const c = ev.target.closest('[data-copy]');
+    if (c) { const ok = await copyText(OUT[c.dataset.copy]()); toast(ok ? 'Đã sao chép' : 'Chưa sao chép được. Hãy bôi đen đoạn văn và nhấn Ctrl+C.'); return; }
+    const d = ev.target.closest('[data-dl]');
+    if (d && DL) {
+      const st = T().students.find((x) => x.id === T().sid);
+      const fn = d.dataset.fn.replace('{name}', slug(eff('studentName'))).replace('{wk}', String(T().n)).replace('{student}', slug(st ? st.name : ''));
+      try { await DL.save({ filename: fn, data: OUT[d.dataset.dl]() }); toast('Đã lưu file'); } catch (e) { toast(e && e.code === 'declined' ? 'Đã hủy' : 'Không tải được. Hãy dùng nút Sao chép.'); }
+    }
+  });
+  let DL = null;
+  try {
+    if (window.claude && typeof window.claude.use === 'function') {
+      window.claude.use('downloads').then((d) => { if (d) { DL = d; document.querySelectorAll('[data-dl]').forEach((b) => { b.hidden = false; }); } }).catch(() => {});
+    }
+  } catch (e) {}
+
+  /* ---------- Cập nhật phần suy ra ---------- */
+  const swatch = (h) => `<span class="swatch" style="background:${h}"></span>${h}`;
+  const OUTH = {
+    w1specs: () => {
+      if (!W1 || !W1.aiForm) return `<div class="empty">Chưa có đặc tả màn hình từ Tuần 1. Điền “Form kết quả AI” ở Tuần 1 để hiện tại đây.</div>`;
+      const a = W1.aiForm;
+      const one = (t, s, l) => `<div class="refcard"><b>${t}</b>${esc(s || 'Chưa có')}${l ? '\n\nBố cục: ' + esc(l) : ''}</div>`;
+      return `<div class="grid3">${one('login.ui', a.login, a.loginLayout)}${one('register.ui', a.register, a.registerLayout)}${one('home.ui', a.home, a.homeLayout)}</div>`;
+    },
+    w1levels: () => {
+      const a = W1 && W1.aiForm ? W1.aiForm : {};
+      if (!a.lvl2 && !a.lvl3) return `<div class="empty">Chưa có lộ trình tính năng mức 2, mức 3 từ Tuần 1. Em tự chọn một chức năng vừa sức.</div>`;
+      return `<div class="grid2"><div class="refcard"><b>Mức 2 · Mở rộng</b>${esc(a.lvl2 || 'Chưa có')}</div><div class="refcard"><b>Mức 3 · Nâng cao</b>${esc(a.lvl3 || 'Chưa có')}</div></div>`;
+    },
+    palText: () => `${swatch(hexv('pal_p'))} &nbsp; ${swatch(hexv('pal_b'))} &nbsp; ${swatch(hexv('pal_t'))}`,
+    scoreTotal: () => String(totalScore()),
+    weekBars: () => weekPercents().map((x, i) => `<div class="wkbar"><span>Tuần ${i + 1} · ${esc(WEEKS[i].name)}</span><div class="track"><i style="width:${x}%"></i></div><span class="p">${x}%</span></div>`).join(''),
+    namesNum: () => String(Object.values(nameIssues()).filter(Boolean).length),
+    mainWarn: () => '',
+    tSummary: () => {
+      const n = T().students.length;
+      return [0, 1, 2, 3].map((w) => {
+        const cnt = { ok: 0, help: 0, late: 0, '': 0 };
+        T().students.forEach((s) => { cnt[s.st[w] || ''] += 1; });
+        const part = (k, color) => `<i style="width:${n ? cnt[k] / n * 100 : 0}%;background:${color}"></i>`;
+        return `<div class="sumbar"><b>Tuần ${w + 1}</b><div class="stack">${part('ok', '#0f9f7a')}${part('help', '#d68b12')}${part('late', '#b42318')}</div><div class="tiny">Đúng tiến độ ${cnt.ok} · Cần hỗ trợ ${cnt.help} · Chậm ${cnt.late} · Chưa đánh giá ${cnt['']}</div></div>`;
+      }).join('');
+    }
+  };
+  function refresh() {
+    document.querySelectorAll('[data-out]').forEach((el) => { const f = OUT[el.dataset.out]; if (f) el.textContent = f(); });
+    document.querySelectorAll('[data-outhtml]').forEach((el) => {
+      const k = el.dataset.outhtml;
+      if (k === 'mainWarn') {
+        const bad = updateNameStatus();
+        el.style.display = bad ? 'block' : 'none';
+        el.innerHTML = bad ? `<strong>Tên widget ở Tuần 2 chưa hợp lệ</strong>Có ${bad} tên cần sửa. Mã bên dưới vẫn sinh ra, nhưng có thể không chạy đúng cho đến khi em sửa.` : '';
+      } else if (OUTH[k]) el.innerHTML = OUTH[k]();
+    });
+    updateNameStatus();
+    CRIT.forEach((c, i) => { const x = Math.min(c[1], Math.max(0, parseInt(S.f['score' + i], 10) || 0)); $('sc' + i).textContent = `${x}/${c[1]}`; });
+    const wp = weekPercents(); const all = Math.round(wp.reduce((a, b) => a + b, 0) / wp.length);
+    $('progressPct').textContent = all + '%'; $('progressFill').style.width = all + '%';
+  }
+
+  /* ---------- Xóa dữ liệu Tuần 2–4 ---------- */
+  let armT = null;
+  $('resetAll').addEventListener('click', () => {
+    const b = $('resetAll');
+    const label = 'Xóa dữ liệu Tuần 2–4 và làm lại';
+    if (b.dataset.armed === '1') {
+      clearTimeout(armT); b.dataset.armed = ''; b.textContent = label;
+      const keepTeacher = S.teacher;
+      S = def(); S.teacher = keepTeacher;
+      try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
+      document.querySelectorAll('[data-f]').forEach((el) => { el.value = el.tagName === 'SELECT' ? el.options[0].value : ''; if (el.tagName === 'SELECT') S.f[el.dataset.f] = el.value; });
+      document.querySelectorAll('[data-c]').forEach((el) => { el.checked = false; const bx = el.closest('.checkrow,.widget'); if (bx) bx.classList.remove('done'); });
+      renderBugs(); renderNames(); refresh(); toast('Đã xóa dữ liệu Tuần 2–4. Tuần 1 và bảng giáo viên được giữ lại.');
+    } else { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xóa'; armT = setTimeout(() => { b.dataset.armed = ''; b.textContent = label; }, 4000); }
+  });
+
+  /* ---------- Khởi tạo ---------- */
+  bindStatic(); renderBugs(); renderNames(); drawTimer(); renderTeacher(); pollW1(); refresh();
+  const h = location.hash.replace('#', '');
+  showPage(PAGES.some((p) => p[0] === h) ? h : 'tuan-1');
+})();
+</script>
+</body>
+</html>

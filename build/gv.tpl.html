@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản lý tiến độ &amp; Báo cáo phụ huynh · Giáo viên</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/*CSS*/
+.gv-shell{max-width:1180px;margin:20px auto 40px;padding:0 16px}
+.gv-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 10px 26px rgba(17,26,50,.05);margin-bottom:16px}
+.gv-auth{max-width:520px;margin:40px auto}
+.gv-controls{display:grid;grid-template-columns:130px 1fr 1fr auto;gap:12px;align-items:end}
+.gv-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.gv-stat{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.gv-stat small{display:block;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase}
+.gv-stat b{font-size:20px;color:var(--brand)}
+.gv-student{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff;margin-bottom:14px;box-shadow:0 6px 18px rgba(17,26,50,.04)}
+.gv-s-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px dashed var(--line);margin-bottom:14px}
+.gv-s-body{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;align-items:start}
+.gv-task{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:#fcfdff;font-size:12.5px;cursor:pointer}
+.gv-task.done{background:#f0fdf4;border-color:#bbf7d0}
+.gv-task input{margin-top:2px;flex:0 0 auto;accent-color:#15803d}
+.gv-task .auto-tag{margin-left:auto;font-size:10.5px;color:var(--muted);white-space:nowrap}
+.gv-preview{white-space:pre-wrap;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;line-height:1.55;max-height:none;background:#f8fafc;color:#111a32;border:1px solid var(--line)}
+.gv-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+@media(max-width:900px){.gv-controls,.gv-s-body,.gv-summary{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <div class="brand">
+  <div class="brandmark" aria-hidden="true">✦</div>
+  <div>
+   <b>APP PRODUCER <span style="color:#fcd34d">· CỔNG GIÁO VIÊN</span></b>
+   <small>Theo dõi tiến độ từng buổi · Tùy chỉnh &amp; Xuất báo cáo gửi phụ huynh</small>
+  </div>
+ </div>
+ <div class="top-save-wrap">
+  <span class="save-pill" id="gvStatusPill">Chưa đăng nhập</span>
+  <button class="btn outline small" type="button" id="btnGvLogout" hidden style="color:#fff;border-color:#64748b">Đăng xuất</button>
+ </div>
+</header>
+
+<main class="gv-shell">
+ <section class="gv-card gv-auth" id="gvAuthBox">
+  <h2 style="margin-top:0">Đăng nhập Giáo viên</h2>
+  <p class="tiny">Trang riêng dành cho giáo viên. Học sinh không có quyền truy cập và không tự mở được Drive. Nhập <b>Mã giáo viên (TEACHER_KEY)</b> trong Apps Script (<code>setupProject()</code> hoặc <code>xemHoacTaoMaGiaoVien()</code>) để mở bảng theo dõi.</p>
+  <div class="field">
+   <label for="gvKey">Mã giáo viên (TEACHER_KEY)</label>
+   <input type="password" id="gvKey" placeholder="Ví dụ: GV-XXXXXXXX" autocomplete="off">
+  </div>
+  <label class="checkrow" style="margin:10px 0"><input type="checkbox" id="gvRemember" checked><span>Ghi nhớ mã trên trình duyệt này</span></label>
+  <div class="actions">
+   <button class="btn primary" type="button" id="btnGvLogin">Mở bảng quản lý</button>
+  </div>
+  <div class="callout warn" id="gvAuthErr" hidden style="margin-top:12px"></div>
+ </section>
+
+ <section id="gvApp" hidden>
+  <section class="gv-card">
+   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+    <div>
+     <h2 style="margin:0 0 4px">Thiết lập buổi học &amp; Mục tiêu đối chiếu</h2>
+     <div class="tiny">Chọn tuần khóa học hiện tại và yêu cầu tương ứng trên web (VD: Tuần 10 của khóa học ↔ Tuần 2 trên web).</div>
+    </div>
+    <div class="actions" style="margin:0">
+     <a class="btn outline small" id="gvSheetLink" href="#" target="_blank" rel="noopener" hidden>Mở Tracking_Master ↗</a>
+     <a class="btn outline small" id="gvFolderLink" href="#" target="_blank" rel="noopener" hidden>Thư mục BaoCao_PhuHuynh ↗</a>
+    </div>
+   </div>
+
+   <div class="gv-controls" style="margin-top:14px">
+    <div class="field" style="margin:0">
+     <label for="gvCourseWeek">Tuần khóa học</label>
+     <input type="number" id="gvCourseWeek" min="1" max="52" value="10">
+    </div>
+    <div class="field" style="margin:0">
+     <label for="gvWebWeek">Yêu cầu trên web</label>
+     <select id="gvWebWeek">
+      <option value="tuan-1">Tuần 1 trên web (Lab10 · Ý tưởng &amp; Uizard)</option>
+      <option value="tuan-2" selected>Tuần 2 trên web (Lab11 · Giao diện Qt Designer)</option>
+      <option value="tuan-3">Tuần 3 trên web (Lab12 · Python &amp; PyQt6)</option>
+      <option value="tuan-4">Tuần 4 trên web (SPCK_Final · Hoàn thiện &amp; Demo)</option>
+     </select>
+    </div>
+    <div class="field" style="margin:0">
+     <label for="gvSearch">Tìm học sinh</label>
+     <input type="text" id="gvSearch" placeholder="Lọc theo tên hoặc tên app..." autocomplete="off">
+    </div>
+    <div class="actions" style="margin:0">
+     <button class="btn primary small" type="button" id="btnGvReload">Tải dữ liệu từ Drive</button>
+    </div>
+   </div>
+
+   <details style="margin-top:12px">
+    <summary class="tiny" style="cursor:pointer;font-weight:700;color:var(--brand)">Tùy chỉnh dòng "Mục tiêu của tuần" áp dụng cho cả lớp</summary>
+    <div class="field" style="margin-top:8px">
+     <label for="gvCustomGoals">Mỗi dòng là 1 gạch đầu dòng mục tiêu (để trống để dùng mặc định)</label>
+     <textarea id="gvCustomGoals" rows="3"></textarea>
+    </div>
+    <div class="actions" style="margin-top:6px">
+     <button class="btn outline small" type="button" id="btnGvApplyGoals">Áp dụng mục tiêu mới cho bản xem trước</button>
+     <button class="btn secondary small" type="button" id="btnGvResetGoals">Khôi phục mục tiêu mặc định</button>
+    </div>
+   </details>
+
+   <div class="gv-filters">
+    <span class="tiny" style="font-weight:700">Lọc:</span>
+    <button type="button" class="chip" data-gv-filter="all">Tất cả</button>
+    <button type="button" class="chip" data-gv-filter="behind">Chưa đúng tiến độ</button>
+    <button type="button" class="chip" data-gv-filter="on_track">Đúng tiến độ</button>
+   </div>
+
+   <div class="gv-summary" id="gvSummary"></div>
+
+   <div class="actions" style="margin-top:14px">
+    <button class="btn primary" type="button" id="btnGvSaveAll">Lưu lên Google Sheet &amp; Xuất file Drive (.txt)</button>
+    <button class="btn outline" type="button" id="btnGvCopyAll">Sao chép báo cáo cả lớp</button>
+   </div>
+   <div id="gvExportNotice" class="callout" hidden style="margin-top:10px"></div>
+  </section>
+
+  <section id="gvStudentList"></section>
+ </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const DEFAULT_CLOUD_API = 'https://script.google.com/macros/s/AKfycbwTyXdfIQLlGBccyg5gJf06rHKNM-l3CwxnpT3FRZJLY6B28DNzWY6TFHtSUI8rbsy4KA/exec';
+const GV_KEY_STORE = 'pta_gv_key_v1';
+
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = (id) => document.getElementById(id);
+
+let toastTimer = null;
+function toast(t) {
+  const el = $('toast');
+  if (!el) return;
+  el.textContent = t;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {
+    const sx = window.scrollX || 0, sy = window.scrollY || 0;
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;top:0;left:0;font-size:16px';
+    document.body.appendChild(ta);
+    try { ta.focus({ preventScroll: true }); } catch (e) {}
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if ((window.scrollY || 0) !== sy) { try { window.scrollTo(sx, sy); } catch (e) {} }
+    return ok;
+  } catch (e) { return false; }
+}
+
+let G = {
+  teacherKey: '',
+  courseWeek: 10,
+  webWeek: 'tuan-2',
+  weekSpecs: {},
+  goals: [],
+  students: [],
+  filter: 'all',
+  search: '',
+  sheetUrl: '',
+  reportFolderUrl: ''
+};
+
+async function postCloud(payload) {
+  const res = await fetch(DEFAULT_CLOUD_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch (e) { throw new Error('Phản hồi không phải JSON hợp lệ từ Apps Script.'); }
+  if (!json || json.ok === false) throw new Error((json && json.error) || 'Lỗi máy chủ Apps Script.');
+  return json;
+}
+
+function getGoalsList() {
+  const raw = ($('gvCustomGoals').value || '').split(/\r?\n/).map((s) => s.replace(/^[-*•]\s*/, '').trim()).filter(Boolean);
+  if (raw.length) return raw;
+  const spec = G.weekSpecs[G.webWeek];
+  return (spec && Array.isArray(spec.goals)) ? spec.goals : [];
+}
+
+function computeStudentEval(st) {
+  const autoItems = (st.autoEval && Array.isArray(st.autoEval.items)) ? st.autoEval.items : [];
+  const custom = st.custom || {};
+  const overrides = (custom.taskOverrides && typeof custom.taskOverrides === 'object') ? custom.taskOverrides : {};
+  const items = [];
+  const missing = [];
+  let done = 0;
+
+  for (let i = 0; i < autoItems.length; i++) {
+    const it = autoItems[i];
+    const isDone = (typeof overrides[it.id] === 'boolean') ? overrides[it.id] : !!it.done;
+    if (isDone) done++; else missing.push(it.label);
+    items.push({ id: it.id, label: it.label, done: isDone, autoDone: !!it.done });
+  }
+  const extraLines = String(custom.extraMissing || '').split(/\r?\n/).map((s) => s.replace(/^[-*•]\s*/, '').trim()).filter(Boolean);
+  for (let j = 0; j < extraLines.length; j++) missing.push(extraLines[j]);
+
+  const total = items.length;
+  const percent = total ? Math.round((done / total) * 100) : 0;
+  const mode = custom.overrideStatus || 'auto';
+  const onTrack = mode === 'on_track' ? true : (mode === 'behind' ? false : (done === total && extraLines.length === 0));
+  return { total, done, percent, onTrack, items, missing };
+}
+
+function formatStudentReport(st, ev) {
+  const spec = G.weekSpecs[G.webWeek] || { label: G.webWeek };
+  const goals = getGoalsList();
+  const cw = String(G.courseWeek || '').trim();
+  const headerWeek = cw ? `tuần ${cw} (${spec.label})` : spec.label;
+  const lines = [
+    (st.displayName || st.studentName || 'Học viên').trim(),
+    `Mục tiêu của ${headerWeek}:`
+  ];
+  goals.forEach((g) => lines.push('- ' + g));
+  lines.push(`Tiến độ hiện tại: ${ev.onTrack ? 'Đúng tiến độ.' : 'Chưa đúng tiến độ.'}`);
+  lines.push('Những nhiệm vụ chưa hoàn thành:');
+  if (!ev.missing.length) {
+    lines.push('- Không có (học viên đã hoàn thành đầy đủ yêu cầu của tuần này).');
+  } else {
+    ev.missing.forEach((m) => lines.push('- ' + m));
+  }
+  return lines.join('\n');
+}
+
+function renderSummary() {
+  const el = $('gvSummary');
+  if (!el) return;
+  const total = G.students.length;
+  let onTrack = 0, submitted = 0;
+  G.students.forEach((st) => {
+    const ev = computeStudentEval(st);
+    if (ev.onTrack) onTrack++;
+    if (st.weekSubmitted) submitted++;
+  });
+  const behind = total - onTrack;
+  el.innerHTML =
+    `<div class="gv-stat"><small>Tổng học sinh</small><b>${total}</b></div>` +
+    `<div class="gv-stat"><small>Đúng tiến độ</small><b style="color:#15803d">${onTrack}</b></div>` +
+    `<div class="gv-stat"><small>Chưa đúng tiến độ</small><b style="color:#b45309">${behind}</b></div>` +
+    `<div class="gv-stat"><small>Đã nộp bài tuần này</small><b>${submitted}/${total}</b></div>`;
+}
+
+function visibleStudents() {
+  const q = (G.search || '').trim().toLowerCase();
+  return G.students.filter((st) => {
+    const ev = computeStudentEval(st);
+    if (G.filter === 'on_track' && !ev.onTrack) return false;
+    if (G.filter === 'behind' && ev.onTrack) return false;
+    if (q) {
+      const hay = `${st.displayName} ${st.studentName} ${st.appName}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function updateStudentCard(studentKey) {
+  const st = G.students.find((x) => x.studentKey === studentKey);
+  const card = document.querySelector(`[data-gv-card="${studentKey}"]`);
+  if (!st || !card) return;
+  const ev = computeStudentEval(st);
+  const txt = formatStudentReport(st, ev);
+  const badge = card.querySelector('[data-gv-badge]');
+  if (badge) {
+    badge.className = 'pill ' + (ev.onTrack ? 'ok' : 'warn');
+    badge.textContent = `${ev.onTrack ? 'Đúng tiến độ' : 'Chưa đúng tiến độ'} · ${ev.percent}%`;
+  }
+  const pre = card.querySelector('[data-gv-preview]');
+  if (pre) pre.textContent = txt;
+  card.querySelectorAll('.gv-task').forEach((row) => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    if (cb) row.classList.toggle('done', cb.checked);
+  });
+  renderSummary();
+}
+
+function renderStudents() {
+  const listEl = $('gvStudentList');
+  if (!listEl) return;
+  const rows = visibleStudents();
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="gv-card"><div class="empty">Không có học sinh nào khớp bộ lọc hiện tại.</div></div>';
+    renderSummary();
+    return;
+  }
+  listEl.innerHTML = rows.map((st) => {
+    const ev = computeStudentEval(st);
+    const repTxt = formatStudentReport(st, ev);
+    const custom = st.custom || {};
+    const mode = custom.overrideStatus || 'auto';
+    const tasksHtml = ev.items.map((it) =>
+      `<label class="gv-task${it.done ? ' done' : ''}">` +
+      `<input type="checkbox" data-gv-task="${esc(st.studentKey)}" data-task-id="${esc(it.id)}"${it.done ? ' checked' : ''}>` +
+      `<span>${esc(it.label)}</span>` +
+      `<span class="auto-tag">Web: ${it.autoDone ? 'xong' : 'chưa'}</span></label>`
+    ).join('');
+    const driveBtn = st.teacherDriveUrl
+      ? `<a class="btn outline small" href="${esc(st.teacherDriveUrl)}" target="_blank" rel="noopener">Thư mục Drive ↗</a>`
+      : '';
+    return `<article class="gv-student" data-gv-card="${esc(st.studentKey)}">` +
+      `<div class="gv-s-head">` +
+      `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">` +
+      `<input type="text" data-gv-name="${esc(st.studentKey)}" value="${esc(st.displayName)}" style="font-weight:700;padding:7px 10px;border:1px solid #cbd5e1;border-radius:10px;min-width:210px" aria-label="Tên hiển thị phụ huynh">` +
+      `<span class="pill ${ev.onTrack ? 'ok' : 'warn'}" data-gv-badge>${ev.onTrack ? 'Đúng tiến độ' : 'Chưa đúng tiến độ'} · ${ev.percent}%</span>` +
+      `<span class="tiny">Tài khoản: <code>${esc(st.studentName)}</code> · App: <b>${esc(st.appName || '[chưa đặt]')}</b> · ${esc(st.latestVersion || 'v001')} · ${st.filesCount || 0} tệp</span>` +
+      `</div>` +
+      `<div class="actions" style="margin:0">${driveBtn}</div>` +
+      `</div>` +
+      `<div class="gv-s-body">` +
+      `<div>` +
+      `<div class="field" style="margin:0 0 10px"><label>Đánh giá tiến độ buổi này</label>` +
+      `<select data-gv-status="${esc(st.studentKey)}">` +
+      `<option value="auto"${mode === 'auto' ? ' selected' : ''}>Tự động theo nhiệm vụ (${ev.done}/${ev.total})</option>` +
+      `<option value="on_track"${mode === 'on_track' ? ' selected' : ''}>Chốt tay: Đúng tiến độ</option>` +
+      `<option value="behind"${mode === 'behind' ? ' selected' : ''}>Chốt tay: Chưa đúng tiến độ</option>` +
+      `</select></div>` +
+      `<div class="tiny" style="font-weight:700;margin-bottom:6px">Tick điều chỉnh thực tế trên lớp:</div>` +
+      tasksHtml +
+      `<div class="field" style="margin:8px 0 0"><label>Nhiệm vụ chưa hoàn thành bổ sung (mỗi dòng 1 ý)</label>` +
+      `<textarea rows="2" data-gv-extra="${esc(st.studentKey)}" placeholder="Ví dụ: Chưa nộp file home.ui lên Drive">${esc(custom.extraMissing || '')}</textarea></div>` +
+      `</div>` +
+      `<div>` +
+      `<div class="tiny" style="font-weight:700;margin-bottom:6px">Nội dung sẵn sàng copy gửi phụ huynh:</div>` +
+      `<pre class="codebox gv-preview" data-gv-preview>${esc(repTxt)}</pre>` +
+      `<div class="actions">` +
+      `<button class="btn primary small" type="button" data-gv-copy="${esc(st.studentKey)}">Sao chép gửi phụ huynh</button>` +
+      `<button class="btn outline small" type="button" data-gv-save="${esc(st.studentKey)}">Lưu học sinh này</button>` +
+      `</div>` +
+      `</div>` +
+      `</div>` +
+      `</article>`;
+  }).join('');
+  renderSummary();
+}
+
+async function loadOverview(opts) {
+  opts = opts || {};
+  const key = (G.teacherKey || '').trim();
+  if (!key) return;
+  const errEl = $('gvAuthErr');
+  if (errEl) errEl.hidden = true;
+  $('gvStatusPill').textContent = 'Đang tải...';
+  try {
+    const payload = { action: 'teacher_overview', teacherKey: key };
+    if (opts.useInputs) {
+      payload.courseWeek = Number($('gvCourseWeek').value) || 10;
+      payload.webWeek = $('gvWebWeek').value || 'tuan-2';
+    }
+    const res = await postCloud(payload);
+    G.courseWeek = res.courseWeek || 10;
+    G.webWeek = res.webWeek || 'tuan-2';
+    G.weekSpecs = res.weekSpecs || {};
+    G.goals = Array.isArray(res.customGoals) ? res.customGoals : [];
+    G.students = Array.isArray(res.students) ? res.students : [];
+    G.sheetUrl = res.sheetUrl || '';
+    G.reportFolderUrl = res.reportFolderUrl || '';
+
+    $('gvCourseWeek').value = String(G.courseWeek);
+    $('gvWebWeek').value = G.webWeek;
+    $('gvCustomGoals').value = G.goals.join('\n');
+    if (G.sheetUrl) { $('gvSheetLink').href = G.sheetUrl; $('gvSheetLink').hidden = false; }
+    if (G.reportFolderUrl) { $('gvFolderLink').href = G.reportFolderUrl; $('gvFolderLink').hidden = false; }
+
+    $('gvAuthBox').hidden = true;
+    $('gvApp').hidden = false;
+    $('btnGvLogout').hidden = false;
+    $('gvStatusPill').textContent = `Giáo viên · ${G.students.length} học sinh`;
+    $('gvStatusPill').classList.add('saved');
+    if ($('gvRemember').checked) {
+      try { localStorage.setItem(GV_KEY_STORE, key); } catch (e) {}
+    } else {
+      try { localStorage.removeItem(GV_KEY_STORE); } catch (e) {}
+    }
+    renderStudents();
+  } catch (e) {
+    $('gvStatusPill').textContent = 'Chưa đăng nhập';
+    $('gvStatusPill').classList.remove('saved');
+    if (errEl && $('gvApp').hidden) {
+      errEl.hidden = false;
+      errEl.textContent = e.message || 'Không đăng nhập được.';
+    }
+    toast(e.message || 'Không tải được dữ liệu giáo viên.');
+  }
+}
+
+function buildSavePayload(list, exportToDrive) {
+  return {
+    action: 'teacher_save_report',
+    teacherKey: G.teacherKey,
+    courseWeek: Number($('gvCourseWeek').value) || G.courseWeek,
+    webWeek: $('gvWebWeek').value || G.webWeek,
+    customGoals: getGoalsList(),
+    exportToDrive: !!exportToDrive,
+    reports: list.map((st) => {
+      const ev = computeStudentEval(st);
+      return {
+        studentKey: st.studentKey,
+        studentName: st.studentName,
+        displayName: st.displayName,
+        appName: st.appName,
+        percent: ev.percent,
+        onTrack: ev.onTrack,
+        missingCount: ev.missing.length,
+        reportText: formatStudentReport(st, ev),
+        custom: st.custom || {}
+      };
+    })
+  };
+}
+
+$('btnGvLogin').addEventListener('click', () => {
+  const k = ($('gvKey').value || '').trim();
+  if (!k) { toast('Hãy nhập Mã giáo viên (TEACHER_KEY).'); return; }
+  G.teacherKey = k;
+  loadOverview({ useInputs: false });
+});
+$('gvKey').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') { ev.preventDefault(); $('btnGvLogin').click(); }
+});
+$('btnGvLogout').addEventListener('click', () => {
+  try { localStorage.removeItem(GV_KEY_STORE); } catch (e) {}
+  G.teacherKey = '';
+  G.students = [];
+  $('gvKey').value = '';
+  $('gvApp').hidden = true;
+  $('gvAuthBox').hidden = false;
+  $('btnGvLogout').hidden = true;
+  $('gvStatusPill').textContent = 'Chưa đăng nhập';
+  $('gvStatusPill').classList.remove('saved');
+});
+
+$('btnGvReload').addEventListener('click', () => loadOverview({ useInputs: true }));
+$('gvWebWeek').addEventListener('change', () => {
+  G.webWeek = $('gvWebWeek').value;
+  loadOverview({ useInputs: true });
+});
+$('gvCourseWeek').addEventListener('input', () => {
+  G.courseWeek = Number($('gvCourseWeek').value) || 1;
+  G.students.forEach((st) => updateStudentCard(st.studentKey));
+});
+$('gvSearch').addEventListener('input', () => {
+  G.search = $('gvSearch').value;
+  renderStudents();
+});
+$('btnGvApplyGoals').addEventListener('click', () => {
+  G.students.forEach((st) => updateStudentCard(st.studentKey));
+  toast('Đã cập nhật mục tiêu xem trước cho cả lớp.');
+});
+$('btnGvResetGoals').addEventListener('click', () => {
+  const spec = G.weekSpecs[G.webWeek];
+  $('gvCustomGoals').value = (spec && Array.isArray(spec.goals)) ? spec.goals.join('\n') : '';
+  G.students.forEach((st) => updateStudentCard(st.studentKey));
+  toast('Đã khôi phục mục tiêu mặc định.');
+});
+
+$('btnGvCopyAll').addEventListener('click', async () => {
+  const blocks = visibleStudents().map((st) => formatStudentReport(st, computeStudentEval(st)));
+  if (!blocks.length) { toast('Không có học sinh nào để sao chép.'); return; }
+  const ok = await copyText(blocks.join('\n\n------------------------------\n\n'));
+  toast(ok ? `Đã sao chép báo cáo của ${blocks.length} học sinh.` : 'Trình duyệt chặn sao chép tự động.');
+});
+
+$('btnGvSaveAll').addEventListener('click', async () => {
+  if (!G.students.length) { toast('Chưa có dữ liệu học sinh.'); return; }
+  const btn = $('btnGvSaveAll');
+  btn.disabled = true;
+  try {
+    toast('Đang lưu lên Tracking_Master và xuất file Drive...');
+    const res = await postCloud(buildSavePayload(G.students, true));
+    const box = $('gvExportNotice');
+    if (box) {
+      box.hidden = false;
+      box.innerHTML = `<strong>Đã lưu ${res.savedCount} học sinh lúc ${esc(res.savedAt)}</strong>` +
+        (res.exportFileUrl ? `File tổng hợp Drive: <a href="${esc(res.exportFileUrl)}" target="_blank" rel="noopener">${esc(res.exportFileName)} ↗</a>` : '');
+    }
+    toast('Đã lưu bảng BaoCaoPhuHuynh và xuất file lên Drive!');
+  } catch (e) {
+    toast(e.message || 'Không lưu được báo cáo.');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.addEventListener('click', async (ev) => {
+  const flt = ev.target.closest('[data-gv-filter]');
+  if (flt) {
+    G.filter = flt.dataset.gvFilter;
+    document.querySelectorAll('[data-gv-filter]').forEach((b) => b.classList.toggle('active', b.dataset.gvFilter === G.filter));
+    renderStudents();
+    return;
+  }
+  const cbtn = ev.target.closest('[data-gv-copy]');
+  if (cbtn) {
+    const st = G.students.find((x) => x.studentKey === cbtn.dataset.gvCopy);
+    if (!st) return;
+    const ok = await copyText(formatStudentReport(st, computeStudentEval(st)));
+    toast(ok ? `Đã sao chép báo cáo của ${st.displayName}` : 'Không sao chép được.');
+    return;
+  }
+  const sbtn = ev.target.closest('[data-gv-save]');
+  if (sbtn) {
+    const st = G.students.find((x) => x.studentKey === sbtn.dataset.gvSave);
+    if (!st) return;
+    sbtn.disabled = true;
+    try {
+      await postCloud(buildSavePayload([st], false));
+      toast(`Đã lưu tiến độ của ${st.displayName} lên Google Sheet!`);
+    } catch (e) {
+      toast(e.message || 'Không lưu được.');
+    } finally {
+      sbtn.disabled = false;
+    }
+  }
+});
+
+document.addEventListener('input', (ev) => {
+  const nm = ev.target.closest('[data-gv-name]');
+  if (nm) {
+    const st = G.students.find((x) => x.studentKey === nm.dataset.gvName);
+    if (st) { st.displayName = nm.value; updateStudentCard(st.studentKey); }
+    return;
+  }
+  const ex = ev.target.closest('[data-gv-extra]');
+  if (ex) {
+    const st = G.students.find((x) => x.studentKey === ex.dataset.gvExtra);
+    if (st) { st.custom = st.custom || {}; st.custom.extraMissing = ex.value; updateStudentCard(st.studentKey); }
+  }
+});
+
+document.addEventListener('change', (ev) => {
+  const sel = ev.target.closest('[data-gv-status]');
+  if (sel) {
+    const st = G.students.find((x) => x.studentKey === sel.dataset.gvStatus);
+    if (st) { st.custom = st.custom || {}; st.custom.overrideStatus = sel.value; updateStudentCard(st.studentKey); }
+    return;
+  }
+  const cb = ev.target.closest('[data-gv-task]');
+  if (cb) {
+    const st = G.students.find((x) => x.studentKey === cb.dataset.gvTask);
+    if (st) {
+      st.custom = st.custom || {};
+      st.custom.taskOverrides = st.custom.taskOverrides || {};
+      st.custom.taskOverrides[cb.dataset.taskId] = cb.checked;
+      updateStudentCard(st.studentKey);
+    }
+  }
+});
+
+try {
+  const savedKey = localStorage.getItem(GV_KEY_STORE) || '';
+  if (savedKey) {
+    $('gvKey').value = savedKey;
+    G.teacherKey = savedKey;
+    loadOverview({ useInputs: false });
+  }
+} catch (e) {}
+</script>
+</body>
+</html>

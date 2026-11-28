@@ -10,15 +10,48 @@ const html = fs.readFileSync(path.join(ROOT, 'site', 'index.html'), 'utf8');
 
 // 0. Kiểm tra bảo mật & Google Apps Script (apps-script/Code.gs) bất biến + không trả link Drive cho HS
 const gsCode = fs.readFileSync(path.join(ROOT, 'apps-script', 'Code.gs'), 'utf8');
-new vm.Script(gsCode);
+const gsCtx = vm.createContext({
+  PropertiesService: {
+    getScriptProperties: () => ({ getProperty: (k) => (k === 'TEACHER_KEY' ? 'GV-TEST-1234' : '') })
+  }
+});
+vm.runInContext(gsCode, gsCtx);
 assert.ok(!gsCode.includes('.setContent('), 'Code.gs không dùng setContent để ghi đè file');
 assert.ok(gsCode.includes('function normalizeStudentName_'), 'Code.gs có hàm chuẩn hóa tên không dấu viết thường');
 assert.ok(!/^\s*(folderUrl|viewUrl)\s*:/m.test(gsCode), 'Code.gs không trả về folderUrl/viewUrl cho trình duyệt HS');
 assert.ok(gsCode.includes('var initState = { f: { studentName: info.studentName } };'), 'Code.gs luôn tạo hồ sơ mới trống sạch');
-['setupProject', 'doGet', 'doPost', 'handleLoadStudent_', 'handleLoadVersion_', 'handleSaveVersion_', 'handleSubmitWeek_', 'handleGetFile_', 'handleListStudents_'].forEach((fn) => {
+['setupProject', 'doGet', 'doPost', 'handleLoadStudent_', 'handleLoadVersion_', 'handleSaveVersion_', 'handleSubmitWeek_', 'handleGetFile_', 'handleListStudents_', 'handleTeacherOverview_', 'handleTeacherSaveReport_', 'capNhatBaoCaoPhuHuynh', 'evaluateWeekProgress_', 'formatParentReport_'].forEach((fn) => {
   assert.ok(gsCode.includes('function ' + fn), 'Code.gs có hàm ' + fn);
 });
+assert.throws(() => gsCtx.requireTeacherKey_({ teacherKey: 'SAI' }), /không đúng/i, 'Code.gs chặn sai TEACHER_KEY');
+assert.strictEqual(gsCtx.requireTeacherKey_({ teacherKey: 'GV-TEST-1234' }), true, 'Code.gs cho phép đúng TEACHER_KEY');
+
+const evalBehind = gsCtx.evaluateWeekProgress_('tuan-2', { c: { w2a1: true, w2a2: true } }, {}, '');
+assert.strictEqual(evalBehind.done, 1);
+assert.strictEqual(evalBehind.onTrack, false);
+const repBehind = gsCtx.formatParentReport_({
+  displayName: 'Trần Gia Huy',
+  courseWeek: 10,
+  webWeek: 'tuan-2',
+  onTrack: evalBehind.onTrack,
+  missing: evalBehind.missing
+});
+assert.ok(repBehind.startsWith('Trần Gia Huy\nMục tiêu của tuần 10 (Tuần 2 trên web (Lab11)):'), 'Mẫu báo cáo đúng định dạng đầu');
+assert.ok(repBehind.includes('Tiến độ hiện tại: Chưa đúng tiến độ.') && repBehind.includes('Những nhiệm vụ chưa hoàn thành:\n- '), 'Mẫu báo cáo có đúng phần Chưa đúng tiến độ & danh sách thiếu');
+
+const evalDone = gsCtx.evaluateWeekProgress_('tuan-2', { c: { w2a1: true, w2a2: true, w2a3: true, w2a4: true, w2s1: true, w2s2: true, w2d1: true, w2d2: true, w2d3: true } }, {}, 'v003');
+assert.strictEqual(evalDone.onTrack, true);
+const repDone = gsCtx.formatParentReport_({
+  displayName: 'Nguyễn Minh Khang',
+  courseWeek: 10,
+  webWeek: 'tuan-2',
+  onTrack: evalDone.onTrack,
+  missing: evalDone.missing
+});
+assert.ok(repDone.includes('Tiến độ hiện tại: Đúng tiến độ.') && repDone.includes('- Không có'), 'Mẫu báo cáo khi đạt đủ yêu cầu');
+
 assert.ok(!html.includes('Mở Drive') && !html.includes('Mở thư mục Drive'), 'Không hiển thị link Drive trên giao diện học sinh');
+assert.ok(!html.includes('gv.html') && !html.includes('teacher_overview') && !/GV-[A-F0-9]{8}/.test(html), 'Trang học sinh không chứa đường dẫn hay mã giáo viên');
 assert.ok(!html.includes('window.scrollTo({ top: 0 })'), 'Không ép cuộn lên top: 0 khi bấm tab/nút');
 
 // 1. Unit tests cho khối hàm /*PURE*/ ... /*ENDPURE*/
@@ -318,6 +351,94 @@ setTimeout(async () => {
   assert.ok(d.querySelector('[data-outhtml="sub_tuan-2"]').textContent.includes('Chưa nộp mục tuan-2'), 'Hồ sơ mới chưa có bài nộp tuần 2');
 
   assert.deepStrictEqual(errs, [], 'lỗi script');
+
+  // 3. Kiểm thử trang riêng Giáo viên (site/gv.html)
+  const gvHtml = fs.readFileSync(path.join(ROOT, 'site', 'gv.html'), 'utf8');
+  assert.ok(!/GV-[A-F0-9]{8}/.test(gvHtml), 'gv.html không chứa cứng TEACHER_KEY');
+  const gvErrs = [];
+  const gvVc = new VirtualConsole();
+  gvVc.on('jsdomError', (e) => { if (!/scrollTo/.test(String(e.message))) gvErrs.push(String(e.message)); });
+  const gvDom = new JSDOM(gvHtml, { runScripts: 'dangerously', url: 'https://example.test/gv.html', virtualConsole: gvVc, pretendToBeVisual: true });
+  await new Promise((r) => setTimeout(r, 60));
+  const gw = gvDom.window, gd = gw.document;
+  const gvIds = [...gd.querySelectorAll('[id]')].map((el) => el.id);
+  assert.deepStrictEqual(gvIds.filter((id, i) => gvIds.indexOf(id) !== i), [], 'gv.html không trùng ID');
+
+  let savedTeacherReq = null;
+  gw.fetch = async (url, init) => {
+    const req = JSON.parse((init && init.body) || '{}');
+    if (req.action === 'teacher_overview') {
+      assert.strictEqual(req.teacherKey, 'GV-TEST-1234', 'Gửi đúng TEACHER_KEY khi đăng nhập giáo viên');
+      return {
+        text: async () => JSON.stringify({
+          ok: true,
+          courseWeek: 10,
+          webWeek: 'tuan-2',
+          weekSpecs: gsCtx.WEEK_SPECS,
+          customGoals: gsCtx.WEEK_SPECS['tuan-2'].goals,
+          sheetUrl: 'https://docs.google.com/spreadsheets/d/mock',
+          reportFolderUrl: 'https://drive.google.com/drive/folders/mock',
+          students: [{
+            studentKey: 'tran-gia-huy',
+            studentName: 'tran gia huy',
+            displayName: 'Trần Gia Huy',
+            appName: 'StudyFlow',
+            latestVersion: 'v003',
+            filesCount: 1,
+            weekSubmitted: true,
+            teacherDriveUrl: 'https://drive.google.com/drive/folders/st1',
+            autoEval: {
+              items: [
+                { id: 't2_forms', label: 'Tạo đủ 3 form Main Window', done: true },
+                { id: 't2_qss', label: 'Áp dụng StyleSheet (QSS)', done: false }
+              ]
+            },
+            custom: {}
+          }]
+        })
+      };
+    }
+    if (req.action === 'teacher_save_report') {
+      savedTeacherReq = req;
+      return {
+        text: async () => JSON.stringify({
+          ok: true,
+          savedAt: '2026-11-28 18:30:00',
+          savedCount: req.reports.length,
+          onTrackCount: req.reports.filter((r) => r.onTrack).length,
+          exportFileName: 'BaoCao_Tuan10_tuan-2_20261128_183000.txt',
+          exportFileUrl: 'https://drive.google.com/file/d/export1'
+        })
+      };
+    }
+    throw new Error('Unexpected action ' + req.action);
+  };
+
+  gd.getElementById('gvKey').value = 'GV-TEST-1234';
+  gd.getElementById('btnGvLogin').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.strictEqual(gd.getElementById('gvApp').hidden, false, 'Đăng nhập xong mở giao diện giáo viên');
+  const prevEl = gd.querySelector('[data-gv-card="tran-gia-huy"] [data-gv-preview]');
+  assert.ok(prevEl.textContent.includes('Tiến độ hiện tại: Chưa đúng tiến độ.'), 'Ban đầu hiển thị Chưa đúng tiến độ');
+
+  const taskCb = gd.querySelector('[data-gv-task="tran-gia-huy"][data-task-id="t2_qss"]');
+  taskCb.checked = true;
+  taskCb.dispatchEvent(new gw.Event('change', { bubbles: true }));
+  assert.ok(prevEl.textContent.includes('Tiến độ hiện tại: Đúng tiến độ.'), 'Tick đủ nhiệm vụ chuyển sang Đúng tiến độ tức thì');
+
+  const extraEl = gd.querySelector('[data-gv-extra="tran-gia-huy"]');
+  extraEl.value = 'Cần bổ sung icon cho nút Home';
+  extraEl.dispatchEvent(new gw.Event('input', { bubbles: true }));
+  assert.ok(prevEl.textContent.includes('Chưa đúng tiến độ.') && prevEl.textContent.includes('- Cần bổ sung icon cho nút Home'), 'Thêm ghi chú tự cập nhật vào danh sách chưa hoàn thành');
+
+  gd.getElementById('btnGvSaveAll').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(savedTeacherReq && savedTeacherReq.exportToDrive === true, 'Bấm lưu cả lớp gửi yêu cầu xuất Drive');
+  assert.strictEqual(savedTeacherReq.reports[0].displayName, 'Trần Gia Huy');
+  assert.ok(gd.getElementById('gvExportNotice').textContent.includes('BaoCao_Tuan10_tuan-2_20261128_183000.txt'), 'Hiển thị link file báo cáo vừa tạo trên Drive');
+  assert.deepStrictEqual(gvErrs, [], 'gv.html không lỗi script');
+  gvDom.window.close();
+
   console.log('OK: student-only hub + immutable versioning tests');
   w.close(); process.exit(0);
 }, 300);

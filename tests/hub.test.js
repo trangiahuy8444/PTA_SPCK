@@ -18,6 +18,7 @@ assert.ok(!/^\s*(folderUrl|viewUrl)\s*:/m.test(gsCode), 'Code.gs không trả v�
   assert.ok(gsCode.includes('function ' + fn), 'Code.gs có hàm ' + fn);
 });
 assert.ok(!html.includes('Mở Drive') && !html.includes('Mở thư mục Drive'), 'Không hiển thị link Drive trên giao diện học sinh');
+assert.ok(!html.includes('window.scrollTo({ top: 0 })'), 'Không ép cuộn lên top: 0 khi bấm tab/nút');
 
 // 1. Unit tests cho khối hàm /*PURE*/ ... /*ENDPURE*/
 const pureMatch = html.match(/\/\*PURE\*\/([\s\S]*?)\/\*ENDPURE\*\//);
@@ -224,6 +225,31 @@ setTimeout(() => {
   assert.ok(/8A1/.test(d.querySelector('[data-out="dossier"]').textContent), 'lớp đi vào hồ sơ');
   assert.ok(d.getElementById('btnCloudSave').classList.contains('dirty'), 'nút Lưu phiên bản mới đổi trạng thái nhắc lưu khi có chỉnh sửa');
   assert.ok(/chưa lưu/i.test(d.getElementById('saveStatePill').textContent), 'nhãn trạng thái báo có thay đổi chưa lưu');
+
+  // Kiểm tra hành vi cuộn trang: bấm subtab / chip / nút không cuộn lên đầu trang; nút ở đáy .btnrow chỉ cuộn về mép panel nếu đã cuộn sâu
+  const scrollCalls = [];
+  w.scrollTo = (...args) => scrollCalls.push(args);
+  d.querySelector('.navbtn[data-go="tuan-1"]').click();
+  scrollCalls.length = 0;
+  d.querySelector('.subtabs [data-tab="tuan-1:b"]').click();
+  const firstChip = d.querySelector('[data-pal]');
+  if (firstChip) firstChip.click();
+  d.querySelector('[data-spec-tab="register"]').click();
+  assert.strictEqual(scrollCalls.length, 0, 'bấm subtab trên .subtabs hoặc nút tương tác không cuộn trang');
+
+  const p2 = d.getElementById('p-tuan-2');
+  const tb = d.querySelector('.topbar');
+  tb.getBoundingClientRect = () => ({ top: 0, height: 68 });
+  p2.getBoundingClientRect = () => ({ top: 120, height: 400 });
+  d.querySelector('.navbtn[data-go="tuan-2"]').click();
+  assert.strictEqual(scrollCalls.length, 0, 'chuyển tuần khi đầu panel đang nhìn thấy không cuộn trang');
+
+  Object.defineProperty(w, 'scrollY', { value: 700, configurable: true });
+  p2.getBoundingClientRect = () => ({ top: -400, height: 800 });
+  d.querySelector('.btnrow [data-tab="tuan-2:b"]').click();
+  assert.strictEqual(scrollCalls.length, 1, 'bấm nút bước tiếp ở đáy .btnrow khi đã cuộn sâu sẽ cuộn về đầu panel');
+  assert.strictEqual(scrollCalls[0][0].top, 220, 'cuộn về đúng mép trên panel dưới sticky topbar (không phải 0)');
+
   assert.deepStrictEqual(errs, [], 'lỗi script');
   console.log('OK: student-only hub + immutable versioning tests');
   w.close(); process.exit(0);

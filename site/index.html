@@ -1283,25 +1283,43 @@ function simRegister(user, pass, confirm, exists) {
   /* ---------- Điều hướng ---------- */
   let current = 'tuan-1';
   let activeMini = MINI_TEMPLATES[0].id;
-  function showPage(slug) {
+  function scrollPanelIntoViewIfAbove(slug) {
+    const panelEl = document.getElementById('p-' + slug);
+    if (!panelEl || typeof panelEl.getBoundingClientRect !== 'function') return;
+    const topbar = document.querySelector('.topbar');
+    const offset = ((topbar && typeof topbar.getBoundingClientRect === 'function') ? topbar.getBoundingClientRect().height : 64) + 12;
+    const rect = panelEl.getBoundingClientRect();
+    if (rect.top < offset) {
+      const sy = window.scrollY || window.pageYOffset || 0;
+      const targetTop = Math.max(0, sy + rect.top - offset);
+      try { window.scrollTo({ top: targetTop, behavior: 'smooth' }); } catch (e) { try { window.scrollTo(0, targetTop); } catch (e2) {} }
+    }
+  }
+  function showPage(slug, opts) {
     if (!PAGES.some((p) => p[0] === slug)) slug = 'tuan-1';
     current = slug;
     document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.dataset.slug === slug));
     nav.querySelectorAll('.navbtn').forEach((b) => b.classList.toggle('active', b.dataset.go === slug));
-    try { history.replaceState(null, '', '#' + slug); } catch (e) { try { location.hash = slug; } catch (e2) {} }
-    try { window.scrollTo({ top: 0 }); } catch (e) {}
+    try { history.replaceState(null, '', '#' + slug); } catch (e) {}
+    if (opts && opts.scroll === 'panel') scrollPanelIntoViewIfAbove(slug);
     refresh();
   }
-  function showTab(slug, tab) {
-    if (current !== slug) showPage(slug);
+  function showTab(slug, tab, opts) {
+    if (current !== slug) showPage(slug, { scroll: false });
     document.querySelectorAll(`[data-sub^="${slug}:"]`).forEach((s) => s.classList.toggle('on', s.dataset.sub === `${slug}:${tab}`));
     document.querySelectorAll(`.subtabs [data-tab^="${slug}:"]`).forEach((b) => b.classList.toggle('active', b.dataset.tab === `${slug}:${tab}`));
-    try { window.scrollTo({ top: 0 }); } catch (e) {}
+    if (opts && opts.scroll === 'panel') scrollPanelIntoViewIfAbove(slug);
     refresh();
   }
   document.addEventListener('click', (ev) => {
-    const g = ev.target.closest('[data-go]'); if (g) { showPage(g.dataset.go); return; }
-    const t = ev.target.closest('[data-tab]'); if (t) { const [s, tb] = t.dataset.tab.split(':'); showTab(s, tb); return; }
+    const g = ev.target.closest('[data-go]'); if (g) { showPage(g.dataset.go, { scroll: 'panel' }); return; }
+    const t = ev.target.closest('[data-tab]');
+    if (t) {
+      const [s, tb] = t.dataset.tab.split(':');
+      const fromFooter = !!t.closest('.btnrow');
+      showTab(s, tb, { scroll: fromFooter ? 'panel' : false });
+      return;
+    }
     const mt = ev.target.closest('[data-mini-tab]');
     if (mt) {
       activeMini = mt.dataset.miniTab;
@@ -1309,7 +1327,7 @@ function simRegister(user, pass, confirm, exists) {
       refresh();
     }
   });
-  window.addEventListener('hashchange', () => { const h = location.hash.replace('#', ''); if (h && h !== current) showPage(h); });
+  window.addEventListener('hashchange', () => { const h = location.hash.replace('#', ''); if (h && h !== current) showPage(h, { scroll: false }); });
 
   /* ---------- Google Drive Cloud Sync & Phiên bản bất biến ---------- */
   const pendingFiles = {};
@@ -1420,7 +1438,10 @@ function simRegister(user, pass, confirm, exists) {
     if (err) {
       toast(err);
       const inp = $('cloudStudentName');
-      if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+      if (inp) {
+        inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
+      }
       return;
     }
     const studentName = normalizeStudentName(rawName);
@@ -1469,7 +1490,7 @@ function simRegister(user, pass, confirm, exists) {
       const blob = new Blob([bytes], { type: res.mimeType || 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = res.name || fileName || 'file';
+      a.href = url; a.download = res.name || fileName || 'file'; a.style.display = 'none';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
       toast('Đã tải về ' + (res.name || fileName));
@@ -1927,13 +1948,26 @@ function simRegister(user, pass, confirm, exists) {
     const blob = new Blob([data], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = filename;
+    a.href = url; a.download = filename; a.style.display = 'none';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async function copyText(text) {
     try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
-    try { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; } catch (e) { return false; }
+    try {
+      const sx = window.scrollX || 0, sy = window.scrollY || 0;
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;top:0;left:0;font-size:16px';
+      document.body.appendChild(ta);
+      try { ta.focus({ preventScroll: true }); } catch (e) {}
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if ((window.scrollY || 0) !== sy) { try { window.scrollTo(sx, sy); } catch (e) {} }
+      return ok;
+    } catch (e) { return false; }
   }
   document.addEventListener('click', async (ev) => {
     const c = ev.target.closest('[data-copy]');
@@ -2071,7 +2105,7 @@ function simRegister(user, pass, confirm, exists) {
   bindStatic(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); drawTimer(); refresh(); setDirty(false);
   loadStudentAutocomplete();
   const h = location.hash.replace('#', '');
-  showPage(PAGES.some((p) => p[0] === h) ? h : 'tuan-1');
+  showPage(PAGES.some((p) => p[0] === h) ? h : 'tuan-1', { scroll: false });
 })();
 </script>
 </body>

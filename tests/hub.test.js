@@ -14,6 +14,7 @@ new vm.Script(gsCode);
 assert.ok(!gsCode.includes('.setContent('), 'Code.gs không dùng setContent để ghi đè file');
 assert.ok(gsCode.includes('function normalizeStudentName_'), 'Code.gs có hàm chuẩn hóa tên không dấu viết thường');
 assert.ok(!/^\s*(folderUrl|viewUrl)\s*:/m.test(gsCode), 'Code.gs không trả về folderUrl/viewUrl cho trình duyệt HS');
+assert.ok(gsCode.includes('var initState = { f: { studentName: info.studentName } };'), 'Code.gs luôn tạo hồ sơ mới trống sạch');
 ['setupProject', 'doGet', 'doPost', 'handleLoadStudent_', 'handleLoadVersion_', 'handleSaveVersion_', 'handleSubmitWeek_', 'handleGetFile_', 'handleListStudents_'].forEach((fn) => {
   assert.ok(gsCode.includes('function ' + fn), 'Code.gs có hàm ' + fn);
 });
@@ -160,7 +161,7 @@ const dom = new JSDOM(html, {
 });
 const w = dom.window, d = w.document;
 
-setTimeout(() => {
+setTimeout(async () => {
   const navs = [...d.querySelectorAll('.navbtn')].map((b) => b.dataset.go);
   assert.deepStrictEqual(navs, ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4', 'ho-so'], 'đã bỏ tab giáo viên');
   assert.strictEqual(d.getElementById('p-giao-vien'), null, 'không còn panel giáo viên');
@@ -280,6 +281,42 @@ setTimeout(() => {
   et.value = 'FileNotFoundError: gui/login.ui';
   et.dispatchEvent(new w.Event('input'));
   assert.ok(d.querySelector('[data-out="aiPromptW3"]').textContent.includes('FileNotFoundError: gui/login.ui'), 'Prompt AI Tuần 3 cập nhật theo lỗi vừa dán');
+
+  // Regression test: đang mở hồ sơ cũ (StudyFlow + tick w2d1), gõ tên học sinh mới rồi bấm Mở / Tạo hồ sơ -> phải sạch hoàn toàn
+  const w2d1 = d.querySelector('[data-c="w2d1"]');
+  w2d1.checked = true;
+  w2d1.dispatchEvent(new w.Event('change'));
+  cs.value = 'tran gia huy 2';
+  cs.dispatchEvent(new w.Event('input'));
+  let sentLoadPayload = null;
+  w.fetch = async (url, init) => {
+    const req = JSON.parse((init && init.body) || '{}');
+    if (req.action === 'load_student') {
+      sentLoadPayload = req;
+      return {
+        text: async () => JSON.stringify({
+          ok: true,
+          created: true,
+          studentKey: 'tran-gia-huy-2',
+          studentName: 'tran gia huy 2',
+          latestVersion: 'v001',
+          updatedAt: '2026-11-28 17:20:00',
+          state: { f: { studentName: 'tran gia huy 2' } },
+          versions: [{ id: 'ver_new', fileName: 'v001_khoi-tao.json', version: 'v001', tag: 'khoi-tao', savedAt: '2026-11-28 17:20:00' }],
+          filesByWeek: { 'tuan-1': [], 'tuan-2': [], 'tuan-3': [], 'tuan-4': [] }
+        })
+      };
+    }
+    return { text: async () => JSON.stringify({ ok: true, students: ['nguyen minh khang', 'tran gia huy 2'] }) };
+  };
+  d.getElementById('btnCloudLoad').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(sentLoadPayload && sentLoadPayload.action === 'load_student', 'Đã gửi yêu cầu load_student');
+  assert.deepStrictEqual(sentLoadPayload.initialState, { f: { studentName: 'tran gia huy 2' } }, 'initialState gửi lên chỉ chứa studentName mới, không mang dữ liệu hồ sơ cũ');
+  assert.strictEqual(d.getElementById('f_appName').value, '', 'Tạo hồ sơ mới xóa sạch appName của học sinh trước');
+  assert.strictEqual(d.getElementById('progressPct').textContent, '0%', 'Tạo hồ sơ mới có tiến độ 0%');
+  assert.strictEqual(d.querySelector('[data-c="w2d1"]').checked, false, 'Tạo hồ sơ mới bỏ tick các checkbox cũ');
+  assert.ok(d.querySelector('[data-outhtml="sub_tuan-2"]').textContent.includes('Chưa nộp mục tuan-2'), 'Hồ sơ mới chưa có bài nộp tuần 2');
 
   assert.deepStrictEqual(errs, [], 'lỗi script');
   console.log('OK: student-only hub + immutable versioning tests');

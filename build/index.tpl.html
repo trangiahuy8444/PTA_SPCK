@@ -1400,10 +1400,19 @@ function simRegister(user, pass, confirm, exists) {
   }
   function applyLoadedState(studentName, res) {
     const keepApi = S.cloud.apiUrl || DEFAULT_CLOUD_API;
+    const base = def();
     if (res.state && typeof res.state === 'object') {
-      S = Object.assign(def(), res.state);
-      S.mockups = Object.assign(def().mockups, res.state.mockups || {});
+      const st = res.state;
+      base.f = Object.assign({}, st.f || {});
+      base.c = Object.assign({}, st.c || {});
+      base.names = Object.assign({}, st.names || {});
+      base.custom = Array.isArray(st.custom) ? st.custom.slice() : [];
+      base.w1Widgets = Array.isArray(st.w1Widgets) ? st.w1Widgets.slice() : [];
+      base.mockups = Object.assign(base.mockups, st.mockups || {});
+      base.bugs = (Array.isArray(st.bugs) && st.bugs.length) ? st.bugs : base.bugs;
+      base.submissions = Object.assign({}, st.submissions || {});
     }
+    S = base;
     S.f.studentName = res.studentName || normalizeStudentName(studentName);
     S.versions = Array.isArray(res.versions) ? res.versions : [];
     S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek || {});
@@ -1412,8 +1421,11 @@ function simRegister(user, pass, confirm, exists) {
       latestVersion: res.latestVersion || (S.versions[0] && S.versions[0].version) || '',
       lastSync: res.updatedAt || new Date().toLocaleTimeString('vi-VN')
     };
-    if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
-    if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
+    Object.keys(pendingFiles).forEach((k) => { delete pendingFiles[k]; });
+    document.querySelectorAll('[data-sub-picked]').forEach((el) => {
+      el.textContent = 'Chưa chọn tệp nào (tối đa 10 MB/lần nộp).';
+    });
+    document.querySelectorAll('[data-sub-files]').forEach((el) => { el.value = ''; });
     try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
     syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh(); setDirty(false);
   }
@@ -1426,10 +1438,7 @@ function simRegister(user, pass, confirm, exists) {
     const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
     try {
       toast('Đang kiểm tra hồ sơ của ' + studentName + '...');
-      const prevKey = studentKeyFromName(val('studentName'));
-      const newKey = studentKeyFromName(studentName);
-      const initialState = (prevKey && prevKey !== newKey) ? { f: { studentName } } : S;
-      const res = await postCloud(api, { action: 'load_student', studentName, initialState });
+      const res = await postCloud(api, { action: 'load_student', studentName, initialState: { f: { studentName } } });
       applyLoadedState(studentName, res);
       if (res.created) {
         loadStudentAutocomplete();
@@ -1789,7 +1798,8 @@ function simRegister(user, pass, confirm, exists) {
     document.querySelectorAll('[data-f]').forEach((el) => {
       const k = el.dataset.f;
       if (S.f[k] !== undefined) el.value = S.f[k];
-      else if (el.tagName === 'SELECT') S.f[k] = el.value;
+      else if (el.tagName === 'SELECT') { el.selectedIndex = 0; S.f[k] = el.value; }
+      else if (el.type === 'range') el.value = el.min || '0';
       else el.value = '';
     });
     document.querySelectorAll('[data-c]').forEach((el) => {

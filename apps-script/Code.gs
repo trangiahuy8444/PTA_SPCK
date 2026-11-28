@@ -126,9 +126,7 @@ function handleLoadStudent_(data) {
         var now = new Date();
         var stamp = formatStamp_(now);
         var nowIso = formatNow_(now);
-        var initState = (data.initialState && typeof data.initialState === 'object') ? data.initialState : {};
-        initState.f = initState.f || {};
-        initState.f.studentName = info.studentName;
+        var initState = { f: { studentName: info.studentName } };
 
         var initFileName = verTag + '_' + stamp + '_khoi-tao.json';
         var initFile = versionsFolder.createFile(initFileName, JSON.stringify(initState, null, 2), MimeType.PLAIN_TEXT);

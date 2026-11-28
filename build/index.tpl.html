@@ -246,10 +246,9 @@ const CRIT = [
   ['Giao diện', 25, 'Bố cục gọn, co giãn được, đặt tên widget đúng quy ước, khớp bản mẫu Uizard ở mức hợp lý'],
   ['Chức năng', 35, 'Đăng ký, đăng nhập, chuyển giao diện chạy đúng; kiểm tra dữ liệu nhập; có chức năng riêng'],
   ['Thuyết trình và hỏi đáp', 15, 'Đúng giờ, demo trôi chảy, trả lời được câu hỏi về code của mình'],
-  ['Quá trình & dùng AI có trách nhiệm', 10, 'Nộp đúng hạn hàng tuần, có Nhật ký AI rõ ràng, giải thích được phần tự làm']
+  ['Quá trình & dùng AI có trách nhiệm', 10, 'Nộp đủ sản phẩm từng tuần, có Nhật ký AI rõ ràng, giải thích được phần tự làm']
 ];
 const SEGS = [['Vấn đề và người dùng', 45], ['Quá trình làm', 60], ['Demo trực tiếp', 120], ['Bài học và hướng phát triển', 45], ['Hỏi đáp', 30]];
-const STATUS = [['', 'Chưa đánh giá', 'none'], ['ok', 'Đúng tiến độ', 'ok'], ['help', 'Cần hỗ trợ', 'help'], ['late', 'Chậm', 'late']];
 
 const AUTH_CORE = `    def find(self, username):
         for user in self.users:
@@ -347,9 +346,10 @@ function def() {
     w1Widgets: [],
     mockups: { login: '', register: '', home: '' },
     bugs: [{ who: '', what: '', fixed: false }],
-    cloud: { apiUrl: DEFAULT_CLOUD_API, classCode: '', studentId: '', pinHash: '', lastSync: '', folderUrl: '' },
-    submissions: {},
-    teacher: { students: [], reports: {}, sid: '', n: 1, key: '', classFilter: '' }
+    cloud: { apiUrl: DEFAULT_CLOUD_API, lastSync: '', latestVersion: '', folderUrl: '' },
+    versions: [],
+    filesByWeek: { 'tuan-1': [], 'tuan-2': [], 'tuan-3': [], 'tuan-4': [] },
+    submissions: {}
   };
 }
 let S = def();
@@ -383,48 +383,38 @@ function btnTextColor(hex) {
 }
 const storageMode = () => (S.f.storage === 'mem' ? 'mem' : 'file');
 
-function hashPin(pin) {
-  const s = 'pta-spck-v2:' + String(pin || '').trim();
-  let h1 = 0x811c9dc5;
-  let h2 = 0x9e3779b9;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 0x01000193) >>> 0;
-    h2 = Math.imul(h2 ^ (ch + i), 0x85ebca6b) >>> 0;
-  }
-  return h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+function studentKeyFromName(name) {
+  const raw = String(name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return raw;
 }
-function validateCloudIdentity(classCode, studentId, pin) {
-  if (!String(classCode || '').trim()) return 'Hãy nhập Mã lớp (ví dụ: PTA01).';
-  if (!String(studentId || '').trim()) return 'Hãy nhập Mã học viên hoặc Tên không dấu.';
-  if (!/^\d{4}$/.test(String(pin || '').trim())) return 'Mã PIN phải gồm đúng 4 chữ số.';
+function validateStudentName(name) {
+  const clean = String(name || '').trim().replace(/\s+/g, ' ');
+  if (clean.length < 2 || !studentKeyFromName(clean)) {
+    return 'Hãy nhập Họ và tên đầy đủ của em (tối thiểu 2 ký tự).';
+  }
   return '';
+}
+function formatBytes(bytes) {
+  const b = Number(bytes) || 0;
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(1) + ' MB';
 }
 function buildSubmitPayload(target, opts) {
   opts = opts || {};
   const wk = Number(String(target || '').replace(/\D/g, '')) || 1;
   const aiText = `Hỏi AI: ${val('aiAsk' + wk) || EMPTY} | Tự sửa: ${val('aiEdit' + wk) || EMPTY}`;
+  const studentName = String(opts.studentName || val('studentName') || '').trim().replace(/\s+/g, ' ');
   return {
     action: 'submit_week',
-    classCode: String(opts.classCode || '').trim().toUpperCase(),
-    studentId: String(opts.studentId || '').trim(),
-    studentName: val('studentName') || String(opts.studentId || '').trim(),
+    studentName,
     appName: val('appName'),
-    pinHash: String(opts.pinHash || ''),
     target: String(target || ''),
     state: opts.state || S,
     files: Array.isArray(opts.files) ? opts.files : [],
     links: String(opts.links || '').trim(),
-    microCheck: '',
     aiLog: aiText
   };
-}
-function buildTeacherShareUrl(baseUrl, apiUrl, classCode) {
-  const cleanBase = String(baseUrl || '').split('#')[0].split('?')[0];
-  const params = [];
-  if (String(apiUrl || '').trim()) params.push('api=' + encodeURIComponent(String(apiUrl).trim()));
-  if (String(classCode || '').trim()) params.push('class=' + encodeURIComponent(String(classCode).trim().toUpperCase()));
-  return cleanBase + (params.length ? '?' + params.join('&') : '') + '#tuan-1';
 }
 
 function migrateLegacyW1(state, legacyRaw) {
@@ -715,35 +705,19 @@ function buildDossier() {
   const bugs = S.bugs.filter((b) => (b.what || '').trim()).map((b, i) => `${i + 1}. [${b.fixed ? 'đã sửa' : 'chưa sửa'}] ${b.what.trim()}${(b.who || '').trim() ? ' (người thử: ' + b.who.trim() + ')' : ''}`).join('\n') || `- ${EMPTY}`;
   const sc = CRIT.map((c, i) => `  ${c[0]}: ${Math.min(c[1], Math.max(0, parseInt(S.f['score' + i], 10) || 0))}/${c[1]}`).join('\n');
   const aiLogs = [1, 2, 3, 4].map((w) => `- Tuần ${w}: Hỏi AI [${or('aiAsk' + w)}] | Tự sửa/viết [${or('aiEdit' + w)}]`).join('\n');
-  const subKeys = Object.keys(S.submissions || {});
-  const subLogs = subKeys.length ? subKeys.map((k) => { const x = S.submissions[k]; return `- ${k}: ${x.status || 'Đã nộp'} (${x.submittedAt || ''}, ${x.filesCount || 0} file)`; }).join('\n') : `- ${EMPTY}`;
+  const fileLines = WEEKS.map((w) => {
+    const arr = (S.filesByWeek && S.filesByWeek[w.slug]) || [];
+    return arr.length ? `- ${w.slug}: ` + arr.map((f) => `[${f.version}] ${f.name}`).join(', ') : `- ${w.slug}: ${EMPTY}`;
+  }).join('\n');
+  const verLines = (S.versions || []).length
+    ? S.versions.slice(0, 10).map((v) => `- ${v.version} (${v.tag || ''}, ${v.savedAt || ''})`).join('\n')
+    : `- ${EMPTY}`;
   return `HỒ SƠ DỰ ÁN CÁ NHÂN 4 TUẦN\nHọc viên: ${or('studentName')}    Lớp: ${or('studentClass')}\nTiến độ: ${WEEKS.map((w, i) => `Tuần ${w.n} ${wp[i]}%`).join(' · ')}\n\n` +
     `=== TUẦN 1 · ${WEEKS[0].lab} ===\n${buildBriefText()}\n\n` +
     `=== TUẦN 2 · ${WEEKS[1].lab} ===\nGhi chú khác bản Uizard: ${or('w2Notes')}\nTên widget:\n${rows}\n\n` +
     `=== TUẦN 3 · ${WEEKS[2].lab} ===\nCách lưu tài khoản: ${storageMode() === 'mem' ? 'chỉ trong bộ nhớ' : 'file users.json'}\nCa kiểm thử đạt: ${nCheck(ckeys('w3t', 7))}/7\nGhi chú lỗi: ${or('w3Notes')}\n\n` +
     `=== TUẦN 4 · ${WEEKS[3].lab} ===\nLỗi từ kiểm thử chéo:\n${bugs}\nChức năng riêng: ${or('custName')}\n  Dữ liệu: ${or('custData')}\n  Widget: ${or('custWidget')}\n  Lớp và phương thức: ${or('custFunc')}\n  Cách kiểm thử: ${or('custTest')}\nTự chấm: ${totalScore()}/100\n${sc}\nKhó nhất: ${or('w4Hard')}\nĐã học được: ${or('w4Learn')}\nSẽ làm tiếp: ${or('w4Next')}\n\n` +
-    `=== NHẬT KÝ DÙNG AI (4T) ===\n${aiLogs}\n\n=== LỊCH SỬ NỘP DRIVE ===\n${subLogs}\n`;
-}
-function reportKey(sid, n) { return sid + '_' + n; }
-function buildReport() {
-  const T = S.teacher;
-  const st = T.students.find((s) => s.id === T.sid);
-  if (!st) return 'Chọn một học viên để tạo phiếu.';
-  const wk = WEEKS.find((x) => x.n === T.n) || WEEKS[0];
-  const r = T.reports[reportKey(st.id, wk.n)] || {};
-  const lv = STATUS.find((x) => x[0] === (st.st[wk.n - 1] || ''));
-  const nx = WEEKS.find((x) => x.n === wk.n + 1);
-  const next = nx ? nx.goal : 'Thuyết trình và demo sản phẩm cuối khóa';
-  return `PHIẾU BÁO CÁO TIẾN ĐỘ – TUẦN ${wk.n}: ${wk.name}\nHọc viên: ${st.name}    Ngày báo cáo: ${orv(r.date)}\nSản phẩm: ${orv(st.project)}\n\n` +
-    `1. Mục tiêu của tuần (bài nộp ${wk.lab}): ${wk.goal}\n2. Đã hoàn thành: ${orv(r.done)}\n3. Chưa hoàn thành và lý do: ${orv(r.notdone)}\n4. Mức tiến độ: ${lv[0] ? lv[1] : EMPTY}\n` +
-    `5. Điểm nổi bật của học viên: ${orv(r.strength)}\n6. Điều cần cải thiện: ${orv(r.improve)}\n7. Gia đình có thể hỗ trợ: ${orv(r.family)}\n8. Mục tiêu tuần sau: ${next}`;
-}
-function csvCell(s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; }
-function buildCsv() {
-  const head = ['Học viên', 'Sản phẩm'].concat(WEEKS.map((w) => 'Tuần ' + w.n));
-  const lab = (x) => (STATUS.find((s) => s[0] === (x || '')) || STATUS[0])[1];
-  const rows = S.teacher.students.map((s) => [s.name, s.project].concat([0, 1, 2, 3].map((i) => lab(s.st[i]))));
-  return '\ufeff' + [head].concat(rows).map((r) => r.map(csvCell).join(',')).join('\r\n');
+    `=== NHẬT KÝ DÙNG AI (4T) ===\n${aiLogs}\n\n=== TỆP BÀI LÀM TRÊN DRIVE ===\n${fileLines}\n\n=== PHIÊN BẢN ĐÃ LƯU ===\n${verLines}\n`;
 }
 function simRegister(user, pass, confirm, exists) {
   const u = (user || '').trim();
@@ -757,9 +731,8 @@ function simRegister(user, pass, confirm, exists) {
 
 (function () {
   const STORE = 'apa-hub-4-tuan-v1';
-  const PAGES = [].concat(
-    WEEKS.map((w) => [w.slug, `Tuần ${w.n} · ${['Ý tưởng & Uizard', 'Giao diện Qt', 'Python', 'Kiểm thử & Demo'][w.n - 1]}`, String(w.n)]),
-    [['ho-so', 'Hồ sơ nộp', 'HS'], ['giao-vien', 'Dành cho giáo viên', 'GV']]);
+  const PAGES = WEEKS.map((w) => [w.slug, `Tuần ${w.n} · ${['Ý tưởng & Uizard', 'Giao diện Qt', 'Python', 'Kiểm thử & Demo'][w.n - 1]}`, String(w.n)])
+    .concat([['ho-so', 'Hồ sơ nộp', 'HS']]);
   try {
     const raw = localStorage.getItem(STORE);
     if (raw) {
@@ -767,8 +740,9 @@ function simRegister(user, pass, confirm, exists) {
       S = Object.assign(def(), sv);
       S.mockups = Object.assign(def().mockups, sv.mockups || {});
       S.cloud = Object.assign(def().cloud, sv.cloud || {});
+      S.filesByWeek = Object.assign(def().filesByWeek, sv.filesByWeek || {});
       S.submissions = Object.assign({}, sv.submissions || {});
-      S.teacher = Object.assign(def().teacher, sv.teacher || {});
+      if (!Array.isArray(S.versions)) S.versions = [];
       if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
       if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
     }
@@ -780,13 +754,10 @@ function simRegister(user, pass, confirm, exists) {
     if (typeof window !== 'undefined' && window.location && window.location.search) {
       const qs = new URLSearchParams(window.location.search);
       const qApi = (qs.get('api') || '').trim();
-      const qCls = (qs.get('class') || '').trim().toUpperCase();
+      const qName = (qs.get('name') || '').trim();
       if (qApi) S.cloud.apiUrl = qApi;
-      if (qCls) {
-        S.cloud.classCode = qCls;
-        if (!S.f.studentClass) S.f.studentClass = qCls;
-      }
-      if (qApi || qCls) localStorage.setItem(STORE, JSON.stringify(S));
+      if (qName && !S.f.studentName) S.f.studentName = qName;
+      if (qApi || qName) localStorage.setItem(STORE, JSON.stringify(S));
     }
   } catch (e) { /* vẫn chạy khi không có bộ nhớ trình duyệt */ }
 
@@ -795,7 +766,7 @@ function simRegister(user, pass, confirm, exists) {
   let saveTimer = null;
   function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
   let toastTimer = null;
-  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2400); }
+  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
 
   /* ---------- Bộ dựng HTML tĩnh ---------- */
   function fld(key, label, o) {
@@ -819,11 +790,12 @@ function simRegister(user, pass, confirm, exists) {
   function submitBox(target, title, hint, opts) {
     opts = opts || {};
     const linkField = opts.withLink ? fld('link_' + target, 'Link Slide / Video Demo dự phòng (Google Drive hoặc YouTube Unlisted)', { ph: 'https://drive.google.com/...' }) : '';
-    return `<div class="submit-box no-print"><h3>${title}</h3><p class="tiny">${hint}</p>` +
+    return `<div class="submit-box no-print"><h3>${title}</h3><p class="tiny">${hint} Mỗi lần nộp sẽ tạo một <b>phiên bản mới</b>, giữ nguyên toàn bộ các bản cũ.</p>` +
       `${linkField}<div class="actions"><label class="btn outline small file-label">Chọn tệp đính kèm<input type="file" multiple data-sub-files="${target}" hidden></label>` +
-      `<button class="btn primary small" type="button" data-submit-target="${target}">Nộp lên Google Drive</button></div>` +
+      `<button class="btn primary small" type="button" data-submit-target="${target}">Nộp phiên bản mới lên Drive</button></div>` +
       `<div class="tiny" data-sub-picked="${target}" style="margin-top:6px">Chưa chọn tệp nào (tối đa 10 MB/lần nộp).</div>` +
-      `<div data-outhtml="sub_${target}" style="margin-top:8px"></div></div>`;
+      `<div data-outhtml="sub_${target}" style="margin-top:8px"></div>` +
+      `<div data-outhtml="files_${target}" style="margin-top:10px"></div></div>`;
   }
 
   function head(step, title, lead, time) {
@@ -843,12 +815,10 @@ function simRegister(user, pass, confirm, exists) {
   }
 
   const cloudBar = `<section class="cloud-bar no-print" id="cloudBar">
- <div class="cloud-top"><div><b>Đồng bộ &amp; Nộp bài Google Drive</b> <span class="tiny">Nhập Mã lớp, Mã HS và PIN 4 số để làm tiếp từ buổi trước hoặc chuyển máy lab → ở nhà.</span></div><div id="cloudStatus"><span class="pill muted">Chế độ lưu trên trình duyệt</span></div></div>
+ <div class="cloud-top"><div><b>Hồ sơ cá nhân trên Google Drive</b> <span class="tiny">Chỉ cần nhập Họ và tên để tải đầy đủ nội dung &amp; tệp bài làm. Mọi lần lưu đều tạo phiên bản mới, không ghi đè bản cũ.</span></div><div id="cloudStatus"><span class="pill muted">Chưa mở hồ sơ Drive</span></div></div>
  <div class="cloud-grid">
-  <div class="field"><label for="cloudClass">Mã lớp</label><input id="cloudClass" placeholder="PTA01" autocomplete="off"></div>
-  <div class="field"><label for="cloudStudent">Mã HS / Tên không dấu</label><input id="cloudStudent" placeholder="khangnm" autocomplete="off"></div>
-  <div class="field"><label for="cloudPin">PIN (4 số)</label><input id="cloudPin" type="password" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off"></div>
-  <div class="actions" style="margin:0"><button class="btn outline small" type="button" id="btnCloudLoad">Tải bài từ Drive</button><button class="btn primary small" type="button" id="btnCloudSave">Lưu nháp Drive</button></div>
+  <div class="field"><label for="cloudStudentName">Họ và tên học sinh</label><input id="cloudStudentName" list="studentList" placeholder="Nhập họ và tên đầy đủ (VD: Nguyễn Minh Khang)" autocomplete="off"><datalist id="studentList"></datalist></div>
+  <div class="actions" style="margin:0"><button class="btn primary small" type="button" id="btnCloudLoad">Mở hồ sơ của em</button><button class="btn outline small" type="button" id="btnCloudSave">Lưu phiên bản mới</button></div>
  </div>
 </section>`;
 
@@ -906,17 +876,17 @@ function simRegister(user, pass, confirm, exists) {
  </div>
  <div data-outhtml="briefSheet"></div>
  ${aiLogBox(1, 'Ghi lại những gì em chọn từ gợi ý của AI ở Tuần 1.')}
- ${submitBox('tuan-1', 'Nộp bài Lab10 cuối buổi 1 lên Google Drive', 'Hệ thống tự lưu toàn bộ Project Brief + Nhật ký AI + ảnh Uizard (em có thể chọn thêm file .html/.png nếu muốn).')}
+ ${submitBox('tuan-1', 'Nộp bài Lab10 cuối buổi 1 lên Google Drive', 'Hệ thống lưu phiên bản mới kèm Project Brief, Nhật ký AI và 3 ảnh Uizard (hoặc tệp em chọn thêm).')}
  <div class="card no-print" style="margin-top:18px;background:#fafbfe">
   <h3>Sao lưu cục bộ (dự phòng khi chưa có mạng)</h3>
   <div class="actions">
    <button class="btn outline small" type="button" data-dl="backupJson" data-fn="du-an-pta-{name}.json">Sao lưu tiến độ (.json)</button>
    <label class="btn outline small file-label">Khôi phục từ file (.json)<input type="file" id="importBackupW1" data-import-backup="1" accept=".json,application/json" hidden></label>
-   <button class="btn danger small" type="button" id="resetAll">Xóa dữ liệu Tuần 1–4 và làm lại</button>
+   <button class="btn danger small" type="button" id="resetAll">Xóa bản nháp trên máy này (không xóa bài trên Drive)</button>
   </div>
  </div>`;
 
-  const w2a = `<div class="callout"><strong>Mục tiêu tuần 2</strong>Biến 3 bản mẫu Uizard thành 3 file giao diện Qt Designer: <code>login.ui</code>, <code>register.ui</code>, <code>home.ui</code>. Tại lớp hoàn thành <code>login.ui</code>, <code>register.ui</code> và dựng khung <code>home.ui</code>; phần hoàn thiện chi tiết làm thêm ở nhà.</div>
+  const w2a = `<div class="callout"><strong>Mục tiêu tuần 2</strong>Biến 3 bản mẫu Uizard thành 3 file giao diện Qt Designer: <code>login.ui</code>, <code>register.ui</code>, <code>home.ui</code>.</div>
  <h3>Đặc tả em đã chốt ở Tuần 1</h3>
  <div data-outhtml="w1specs"></div>
  <h3>Cách tạo mỗi file</h3>
@@ -1008,7 +978,7 @@ function simRegister(user, pass, confirm, exists) {
  ${submitBox('tuan-4', 'Nộp bài SPCK_Final lên Google Drive', 'Đính kèm mã nguồn (.zip hoặc các file .py/.ui), slide thuyết trình và dán link video demo dự phòng.', { withLink: true })}`;
 
   const dossier = `<section class="panel" id="p-ho-so" data-slug="ho-so">
- ${head('HS · Hồ sơ', 'Hồ sơ dự án cá nhân', 'Tổng hợp mọi thứ em đã làm trong 4 tuần (gồm Nhật ký AI và lịch sử nộp Drive).', 'Cuối khóa')}
+ ${head('HS · Hồ sơ', 'Hồ sơ dự án cá nhân', 'Xem toàn bộ nội dung, kho file bài làm đã nộp trên Drive và lịch sử các phiên bản của em.', 'Cuối khóa')}
  <div data-outhtml="weekBars"></div>
  <div class="actions">
   <button class="btn primary" type="button" data-copy="dossier">Sao chép hồ sơ</button>
@@ -1016,43 +986,12 @@ function simRegister(user, pass, confirm, exists) {
   <button class="btn outline" type="button" data-dl="backupJson" data-fn="du-an-pta-{name}.json">Sao lưu dự án (.json)</button>
   <label class="btn outline file-label">Khôi phục (.json)<input type="file" id="importBackupHS" data-import-backup="1" accept=".json,application/json" hidden></label>
  </div>
- <p class="tiny">Ảnh Uizard em đính kèm ở Tuần 1 nằm trong file Project Brief (<code>.html</code>) tải ở Tuần 1 hoặc trên Google Drive của lớp.</p>
- <h3>Xem trước</h3><div class="codebox" data-out="dossier" style="max-height:460px"></div>
+ <h3>Kho file bài làm đã nộp trên Drive</h3>
+ <div data-outhtml="allFiles"></div>
+ <h3>Lịch sử các phiên bản đã lưu (không ghi đè)</h3>
+ <div data-outhtml="versionHistory"></div>
+ <h3>Xem trước hồ sơ văn bản</h3><div class="codebox" data-out="dossier" style="max-height:460px"></div>
  <div class="btnrow"><button class="btn secondary" type="button" data-go="tuan-4">← Tuần 4</button><span></span></div>
-</section>`;
-
-  const teacher = `<section class="panel" id="p-giao-vien" data-slug="giao-vien">
- ${head('GV · Giáo viên', 'Theo dõi tiến độ và báo cáo phụ huynh', 'Kết nối Google Drive & Google Sheet để tự động gom bài lớp học, xem Nhật ký AI và tạo phiếu báo cáo phụ huynh.', 'Mỗi tuần')}
- <div class="card" style="background:#f7f9ff;border-color:#cdd7f8;margin-bottom:16px">
-  <h3 style="margin-top:0">Kết nối Google Drive &amp; Google Sheet</h3>
-  <p class="tiny">Dán Web App URL sau khi triển khai <code>apps-script/Code.gs</code> và Teacher Key từ nhật ký <code>setupProject()</code>.</p>
-  <div class="grid3">
-   <div class="field"><label for="tApiUrl">Apps Script Web App URL</label><input id="tApiUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
-   <div class="field"><label for="tKey">Teacher Key</label><input id="tKey" type="password" placeholder="GV-XXXXXXXX" autocomplete="off"></div>
-   <div class="field"><label for="tClassFilter">Mã lớp</label><input id="tClassFilter" placeholder="PTA01" autocomplete="off"></div>
-  </div>
-  <div class="actions">
-   <button class="btn outline small" type="button" id="tPing">Kiểm tra kết nối</button>
-   <button class="btn primary small" type="button" id="tCloudSync">Đồng bộ lớp từ Google Sheet</button>
-   <button class="btn outline small" type="button" id="tCopyClassLink">Sao chép link lớp cho HS</button>
-  </div>
-  <div id="tCloudMsg" class="tiny" style="margin-top:8px">Chưa kết nối Google Apps Script.</div>
-  <div id="tCloudLogs" class="log-table"></div>
- </div>
- <h3>Danh sách học viên</h3>
- <div class="grid2"><div class="field"><label for="tName">Họ và tên</label><input id="tName" autocomplete="off"></div><div class="field"><label for="tProject">Tên sản phẩm</label><input id="tProject" autocomplete="off"></div></div>
- <div class="actions"><button class="btn primary" type="button" id="tAdd">Thêm học viên</button></div>
- <div class="rows" id="tRows" style="margin-top:12px"></div>
- <div class="sumbars" data-outhtml="tSummary"></div>
- <div class="callout"><strong>Tiêu chí xếp mức</strong><b>Đúng tiến độ:</b> nộp đủ sản phẩm của tuần (Lab10, Lab11, Lab12, SPCK_Final) và qua mốc kiểm tra. <b>Cần hỗ trợ:</b> nộp thiếu hoặc chưa qua mốc, còn khả năng bù ở tuần sau. <b>Chậm:</b> chưa có sản phẩm chính của tuần; thầy trao đổi riêng với học viên và phụ huynh để điều chỉnh phạm vi.</div>
- <div class="actions"><button class="btn outline" type="button" data-copy="csv">Sao chép bảng (CSV)</button><button class="btn outline" type="button" data-dl="csv" data-fn="bang-theo-doi-tien-do.csv">Tải bảng (.csv)</button></div>
- <h3>Phiếu báo cáo phụ huynh</h3>
- <div class="grid2"><div class="field"><label for="rSid">Học viên</label><select id="rSid"></select></div><div class="field"><label for="rWk">Tuần</label><select id="rWk">${WEEKS.map((w) => `<option value="${w.n}">Tuần ${w.n} · ${w.lab}</option>`).join('')}</select></div></div>
- <div class="grid2"><div class="field"><label for="rDate">Ngày báo cáo</label><input id="rDate" placeholder="dd/mm/yyyy" autocomplete="off"></div><div class="field"><label for="rDone">Đã hoàn thành</label><textarea id="rDone" rows="2"></textarea></div></div>
- <div class="grid2"><div class="field"><label for="rNot">Chưa hoàn thành và lý do</label><textarea id="rNot" rows="2"></textarea></div><div class="field"><label for="rStr">Điểm nổi bật của học viên (việc cụ thể)</label><textarea id="rStr" rows="2"></textarea></div></div>
- <div class="grid2"><div class="field"><label for="rImp">Điều cần cải thiện</label><textarea id="rImp" rows="2"></textarea></div><div class="field"><label for="rFam">Gia đình có thể hỗ trợ</label><textarea id="rFam" rows="2"></textarea></div></div>
- <div class="codebox" data-out="report" style="max-height:none"></div>
- <div class="actions"><button class="btn primary" type="button" data-copy="report">Sao chép phiếu</button><button class="btn outline" type="button" data-dl="report" data-fn="phieu-bao-cao-tuan-{wk}-{student}.txt">Tải phiếu (.txt)</button></div>
 </section>`;
 
   /* ---------- Dựng trang ---------- */
@@ -1061,11 +1000,10 @@ function simRegister(user, pass, confirm, exists) {
     panel('tuan-2', '02 · Nộp: Lab11', 'Thiết kế giao diện Qt Designer', 'Chuyển bản mẫu Uizard thành 3 form thực tế, chọn icon/ảnh, trang trí QSS và đặt objectName chuẩn.', 'Tuần 2', [['a', 'Từ Uizard sang Qt', w2a], ['b', 'Kho Icon & Hình ảnh', w2assets], ['c', 'Tên widget', w2b], ['d', 'QSS & Trợ lý AI', w2c], ['e', 'Nghiệm thu & Nộp Lab11', w2d]]) +
     panel('tuan-3', '03 · Nộp: Lab12', 'Lập trình chức năng Python', 'Nối 3 form với logic: đăng ký, lưu tài khoản, đăng nhập và chuyển màn hình.', 'Tuần 3', [['a', 'Chuẩn bị', w3a], ['b', 'auth.py', w3b], ['c', 'main.py', w3c], ['d', 'Kiểm thử & Debug', w3d], ['e', 'Nghiệm thu & Nộp Lab12', w3e]]) +
     panel('tuan-4', '04 · Nộp: SPCK_Final', 'Kiểm thử & Thuyết trình', 'Kiểm thử chéo, hoàn thiện chức năng riêng theo mẫu mini và chuẩn bị demo trước lớp.', 'Tuần 4', [['a', 'Kiểm thử chéo', w4a], ['b', 'Chức năng riêng & Mẫu mini', w4b], ['c', 'Thuyết trình', w4c], ['d', 'Tự chấm', w4d], ['e', 'Nghiệm thu & Nộp SPCK', w4e]]) +
-    dossier + teacher;
+    dossier;
 
   const nav = $('navigation');
   PAGES.forEach((p, i) => {
-    if (i === PAGES.length - 1) { const s = document.createElement('div'); s.className = 'navsep'; nav.appendChild(s); }
     const b = document.createElement('button'); b.type = 'button'; b.className = 'navbtn' + (i === 0 ? ' active' : ''); b.dataset.go = p[0];
     b.innerHTML = `<span class="navnum">${p[2]}</span><span>${p[1]}</span>`; nav.appendChild(b);
   });
@@ -1080,7 +1018,6 @@ function simRegister(user, pass, confirm, exists) {
     nav.querySelectorAll('.navbtn').forEach((b) => b.classList.toggle('active', b.dataset.go === slug));
     try { history.replaceState(null, '', '#' + slug); } catch (e) { try { location.hash = slug; } catch (e2) {} }
     try { window.scrollTo({ top: 0 }); } catch (e) {}
-    if (slug === 'giao-vien') renderTeacher();
     refresh();
   }
   function showTab(slug, tab) {
@@ -1102,33 +1039,36 @@ function simRegister(user, pass, confirm, exists) {
   });
   window.addEventListener('hashchange', () => { const h = location.hash.replace('#', ''); if (h && h !== current) showPage(h); });
 
-  /* ---------- Google Drive Cloud Sync & Nộp bài ---------- */
+  /* ---------- Google Drive Cloud Sync & Phiên bản bất biến ---------- */
   const pendingFiles = {};
   function renderCloudStatus() {
     const el = $('cloudStatus');
     if (!el) return;
     const c = S.cloud || {};
-    if (!c.apiUrl) {
-      el.innerHTML = `<span class="pill muted">Chưa gắn link Drive lớp (lưu trên trình duyệt)</span>`;
-      return;
-    }
-    const link = c.folderUrl ? ` <a href="${esc(c.folderUrl)}" target="_blank" rel="noopener">Mở thư mục Drive ↗</a>` : '';
-    if (c.lastSync) {
-      el.innerHTML = `<span class="pill ok">Đã đồng bộ Drive · ${esc(c.lastSync)}</span>${link}`;
+    const totalFiles = ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4'].reduce((s, k) => s + ((S.filesByWeek && S.filesByWeek[k]) ? S.filesByWeek[k].length : 0), 0);
+    const link = c.folderUrl ? ` <a href="${esc(c.folderUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>` : '';
+    if (c.latestVersion || c.lastSync) {
+      el.innerHTML = `<span class="pill ok">${esc(c.latestVersion || 'Đã đồng bộ')} · ${esc(c.lastSync || '')} · ${totalFiles} tệp</span>${link}`;
+    } else if (c.apiUrl) {
+      el.innerHTML = `<span class="pill warn">Sẵn sàng · Nhập họ tên để mở hồ sơ</span>${link}`;
     } else {
-      el.innerHTML = `<span class="pill warn">Đã nối lớp · Chưa đồng bộ</span>${link}`;
+      el.innerHTML = `<span class="pill muted">Chế độ lưu trên máy</span>`;
     }
   }
   function syncCloudBarInputs() {
-    if ($('cloudClass')) $('cloudClass').value = S.cloud.classCode || val('studentClass') || '';
-    if ($('cloudStudent')) $('cloudStudent').value = S.cloud.studentId || '';
-    if ($('tApiUrl')) $('tApiUrl').value = S.cloud.apiUrl || '';
-    if ($('tKey')) $('tKey').value = S.teacher.key || '';
-    if ($('tClassFilter')) $('tClassFilter').value = S.teacher.classFilter || S.cloud.classCode || '';
+    if ($('cloudStudentName')) $('cloudStudentName').value = S.f.studentName || '';
     renderCloudStatus();
   }
+  $('cloudStudentName').addEventListener('input', () => {
+    setFieldValue('studentName', $('cloudStudentName').value);
+    save(); refresh();
+  });
+  $('cloudStudentName').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); $('btnCloudLoad').click(); }
+  });
+
   async function postCloud(apiUrl, payload) {
-    if (!apiUrl) throw new Error('Chưa có đường dẫn Google Apps Script của lớp.');
+    if (!apiUrl) throw new Error('Chưa có đường dẫn Google Apps Script.');
     const res = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1159,74 +1099,139 @@ function simRegister(user, pass, confirm, exists) {
       r.readAsDataURL(file);
     });
   }
+  function applyLoadedState(studentName, res) {
+    const keepApi = S.cloud.apiUrl || DEFAULT_CLOUD_API;
+    if (res.state && typeof res.state === 'object') {
+      S = Object.assign(def(), res.state);
+      S.mockups = Object.assign(def().mockups, res.state.mockups || {});
+    }
+    S.f.studentName = res.studentName || studentName;
+    S.versions = Array.isArray(res.versions) ? res.versions : [];
+    S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek || {});
+    S.cloud = {
+      apiUrl: keepApi,
+      latestVersion: res.latestVersion || (S.versions[0] && S.versions[0].version) || '',
+      lastSync: res.updatedAt || new Date().toLocaleTimeString('vi-VN'),
+      folderUrl: res.folderUrl || ''
+    };
+    if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
+    if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
+    try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
+    syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
+  }
+
   $('btnCloudLoad').addEventListener('click', async () => {
-    const classCode = $('cloudClass').value.trim().toUpperCase();
-    const studentId = $('cloudStudent').value.trim();
-    const pin = $('cloudPin').value.trim();
-    const err = validateCloudIdentity(classCode, studentId, pin);
+    const studentName = $('cloudStudentName').value.trim().replace(/\s+/g, ' ');
+    const err = validateStudentName(studentName);
     if (err) { toast(err); return; }
-    if (!S.cloud.apiUrl) { toast('Chưa cấu hình Web App URL của lớp. Hỏi giáo viên hoặc dùng Sao lưu .json.'); return; }
+    const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
     try {
-      toast('Đang tải bài từ Google Drive...');
-      const pinHash = hashPin(pin);
-      const res = await postCloud(S.cloud.apiUrl, { action: 'load_state', classCode, studentId, pinHash });
-      S.cloud.classCode = classCode;
-      S.cloud.studentId = studentId;
-      S.cloud.pinHash = pinHash;
-      if (res.isNew || !res.state) {
-        if (!S.f.studentClass) S.f.studentClass = classCode;
-        save(); syncCloudBarInputs(); refresh();
-        toast('Chưa có hồ sơ trên Drive — hãy bấm "Lưu nháp Drive" để tạo mới.');
+      toast('Đang tìm hồ sơ của ' + studentName + '...');
+      const prevKey = studentKeyFromName(val('studentName'));
+      const newKey = studentKeyFromName(studentName);
+      const res = await postCloud(api, { action: 'load_student', studentName });
+      if (res.isNew) {
+        if (prevKey && prevKey !== newKey) {
+          S = def();
+          S.cloud.apiUrl = api;
+        }
+        setFieldValue('studentName', studentName);
+        S.versions = [];
+        S.filesByWeek = def().filesByWeek;
+        S.cloud.latestVersion = ''; S.cloud.lastSync = ''; S.cloud.folderUrl = '';
+        try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
+        syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
+        toast('Chưa có hồ sơ trên Drive cho tên này — hãy bấm "Lưu phiên bản mới" khi làm bài.');
         return;
       }
-      const keepApi = S.cloud.apiUrl;
-      const keepTeacher = S.teacher;
-      S = Object.assign(def(), res.state);
-      S.mockups = Object.assign(def().mockups, (res.state && res.state.mockups) || {});
-      S.cloud = Object.assign(def().cloud, (res.state && res.state.cloud) || {}, {
-        apiUrl: keepApi, classCode, studentId, pinHash,
-        lastSync: res.updatedAt || new Date().toLocaleTimeString('vi-VN'),
-        folderUrl: res.folderUrl || ''
-      });
-      S.teacher = keepTeacher;
-      if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
-      if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
-      try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
-      syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
-      toast('Đã tải tiến độ từ Google Drive!');
-    } catch (e) { toast(e.message || 'Không tải được từ Drive.'); }
+      applyLoadedState(studentName, res);
+      toast(`Đã mở hồ sơ ${S.f.studentName} (${S.cloud.latestVersion || 'Drive'})!`);
+    } catch (e) { toast(e.message || 'Không tải được hồ sơ từ Drive.'); }
   });
+
   $('btnCloudSave').addEventListener('click', async () => {
-    const classCode = $('cloudClass').value.trim().toUpperCase();
-    const studentId = $('cloudStudent').value.trim();
-    const pin = $('cloudPin').value.trim();
-    const err = validateCloudIdentity(classCode, studentId, pin);
+    const studentName = $('cloudStudentName').value.trim().replace(/\s+/g, ' ');
+    const err = validateStudentName(studentName);
     if (err) { toast(err); return; }
-    if (!S.cloud.apiUrl) { toast('Chưa cấu hình Web App URL của lớp. Hỏi giáo viên hoặc dùng Sao lưu .json.'); return; }
+    setFieldValue('studentName', studentName);
+    const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
     try {
-      const pinHash = hashPin(pin);
-      S.cloud.classCode = classCode;
-      S.cloud.studentId = studentId;
-      S.cloud.pinHash = pinHash;
-      if (!S.f.studentClass) setFieldValue('studentClass', classCode);
-      toast('Đang lưu nháp lên Google Drive...');
-      const res = await postCloud(S.cloud.apiUrl, {
-        action: 'save_state', classCode, studentId,
-        studentName: val('studentName') || studentId,
-        appName: val('appName'), pinHash, state: S
+      toast('Đang lưu phiên bản mới lên Drive...');
+      const res = await postCloud(api, {
+        action: 'save_version',
+        studentName,
+        appName: val('appName'),
+        state: S
       });
+      S.versions = Array.isArray(res.versions) ? res.versions : S.versions;
+      if (res.filesByWeek) S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek);
+      S.cloud.latestVersion = res.version || '';
       S.cloud.lastSync = res.savedAt || new Date().toLocaleTimeString('vi-VN');
       if (res.folderUrl) S.cloud.folderUrl = res.folderUrl;
-      save(); renderCloudStatus();
-      toast('Đã lưu nháp lên Google Drive!');
+      save(); renderCloudStatus(); refresh();
+      toast(`Đã lưu phiên bản ${res.version || 'mới'} (không ghi đè bản cũ)!`);
     } catch (e) { toast(e.message || 'Không lưu được lên Drive.'); }
   });
+
+  async function openDriveFile(fileId, fileName) {
+    const studentName = ($('cloudStudentName').value || val('studentName')).trim();
+    const err = validateStudentName(studentName);
+    if (err) { toast(err); return; }
+    try {
+      toast('Đang tải ' + (fileName || 'tệp') + '...');
+      const res = await postCloud(S.cloud.apiUrl || DEFAULT_CLOUD_API, { action: 'get_file', studentName, fileId });
+      const bin = atob(res.base64 || '');
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: res.mimeType || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = res.name || fileName || 'file';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      toast('Đã tải về ' + (res.name || fileName));
+    } catch (e) { toast(e.message || 'Không mở được tệp từ Drive.'); }
+  }
+
+  async function loadSpecificVersion(fileId, versionLabel) {
+    const studentName = ($('cloudStudentName').value || val('studentName')).trim();
+    const err = validateStudentName(studentName);
+    if (err) { toast(err); return; }
+    try {
+      toast('Đang mở phiên bản ' + (versionLabel || '') + '...');
+      const res = await postCloud(S.cloud.apiUrl || DEFAULT_CLOUD_API, { action: 'load_version', studentName, fileId });
+      if (!res.state) throw new Error('Không đọc được nội dung phiên bản.');
+      const keepVersions = S.versions;
+      const keepFiles = S.filesByWeek;
+      const keepCloud = Object.assign({}, S.cloud);
+      S = Object.assign(def(), res.state);
+      S.mockups = Object.assign(def().mockups, res.state.mockups || {});
+      S.versions = keepVersions;
+      S.filesByWeek = keepFiles;
+      S.cloud = keepCloud;
+      S.f.studentName = S.f.studentName || studentName;
+      try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
+      syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
+      toast(`Đang xem phiên bản ${versionLabel}. Bấm "Lưu phiên bản mới" nếu muốn lưu tiếp từ bản này.`);
+    } catch (e) { toast(e.message || 'Không tải được phiên bản.'); }
+  }
+
+  async function loadStudentAutocomplete() {
+    const dl = $('studentList');
+    const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
+    if (!dl || !api || typeof fetch !== 'function') return;
+    try {
+      const res = await postCloud(api, { action: 'list_students' });
+      dl.innerHTML = (res.students || []).map((n) => `<option value="${esc(n)}">`).join('');
+    } catch (e) { /* bỏ qua khi offline */ }
+  }
 
   /* ---------- Tương tác Tuần 1 (gộp Hub) ---------- */
   function setFieldValue(key, value) {
     S.f[key] = value;
     const el = $('f_' + key);
     if (el) el.value = value;
+    if (key === 'studentName' && $('cloudStudentName')) $('cloudStudentName').value = value;
   }
   function syncColorInputs() {
     ['pal_p', 'pal_b', 'pal_t'].forEach((k) => {
@@ -1326,21 +1331,29 @@ function simRegister(user, pass, confirm, exists) {
       S.mockups[slot] = '';
       renderMockupSlots(); save(); refresh(); toast('Đã gỡ ảnh ' + slot); return;
     }
+    const openF = ev.target.closest('[data-open-file]');
+    if (openF) {
+      await openDriveFile(openF.dataset.openFile, openF.dataset.fileName);
+      return;
+    }
+    const loadV = ev.target.closest('[data-load-ver]');
+    if (loadV) {
+      await loadSpecificVersion(loadV.dataset.loadVer, loadV.dataset.verLabel);
+      return;
+    }
     const subBtn = ev.target.closest('[data-submit-target]');
     if (subBtn) {
       const target = subBtn.dataset.submitTarget;
-      const classCode = $('cloudClass').value.trim().toUpperCase();
-      const studentId = $('cloudStudent').value.trim();
-      const pin = $('cloudPin').value.trim();
-      const err = validateCloudIdentity(classCode, studentId, pin);
+      const studentName = ($('cloudStudentName').value || val('studentName')).trim().replace(/\s+/g, ' ');
+      const err = validateStudentName(studentName);
       if (err) { toast(err); return; }
-      if (!S.cloud.apiUrl) { toast('Chưa có Web App URL của lớp. Hãy nhờ giáo viên gửi link lớp hoặc dùng Sao lưu .json.'); return; }
+      setFieldValue('studentName', studentName);
       const rawFiles = pendingFiles[target] || [];
       const totalBytes = rawFiles.reduce((s, f) => s + (f.size || 0), 0);
       if (totalBytes > 10 * 1024 * 1024) { toast('Tổng dung lượng tệp vượt 10 MB. Hãy nén bớt ảnh hoặc gửi link Drive.'); return; }
       try {
         subBtn.disabled = true;
-        toast('Đang tải bài lên Google Drive...');
+        toast('Đang nộp phiên bản mới lên Google Drive...');
         const files = await Promise.all(rawFiles.map(readFileBase64));
         if (target === 'tuan-1') {
           ['login', 'register', 'home'].forEach((slot) => {
@@ -1350,15 +1363,19 @@ function simRegister(user, pass, confirm, exists) {
             }
           });
         }
-        const pinHash = hashPin(pin);
-        S.cloud.classCode = classCode; S.cloud.studentId = studentId; S.cloud.pinHash = pinHash;
-        const payload = buildSubmitPayload(target, { classCode, studentId, pinHash, files, links: val('link_' + target), state: S });
-        const res = await postCloud(S.cloud.apiUrl, payload);
-        S.submissions[target] = { status: res.status || 'Đã nộp', submittedAt: res.submittedAt || '', filesCount: res.filesCount || files.length, folderUrl: res.folderUrl || '' };
+        const payload = buildSubmitPayload(target, { studentName, files, links: val('link_' + target), state: S });
+        const res = await postCloud(S.cloud.apiUrl || DEFAULT_CLOUD_API, payload);
+        S.submissions[target] = { status: res.status || 'Đã lưu', submittedAt: res.submittedAt || '', filesCount: res.filesCount || files.length, folderUrl: res.folderUrl || '' };
+        if (Array.isArray(res.versions)) S.versions = res.versions;
+        if (res.filesByWeek) S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek);
+        S.cloud.latestVersion = res.version || S.cloud.latestVersion;
         S.cloud.lastSync = res.submittedAt || new Date().toLocaleTimeString('vi-VN');
         if (target === 'tuan-2') ['w2d1', 'w2d2', 'w2d3'].forEach((k) => { S.c[k] = true; });
+        pendingFiles[target] = [];
+        const pickedEl = document.querySelector(`[data-sub-picked="${target}"]`);
+        if (pickedEl) pickedEl.textContent = 'Chưa chọn tệp nào (tối đa 10 MB/lần nộp).';
         syncAllInputs(); renderCloudStatus(); save(); refresh();
-        toast(`Đã nộp ${target} (${S.submissions[target].status})!`);
+        toast(`Đã nộp ${target} · Phiên bản ${res.version || 'mới'}!`);
       } catch (e) {
         toast(e.message || 'Nộp bài chưa thành công.');
       } finally {
@@ -1419,13 +1436,14 @@ function simRegister(user, pass, confirm, exists) {
           if (!data || typeof data !== 'object' || !data.f) throw new Error('bad');
           S = Object.assign(def(), data);
           S.mockups = Object.assign(def().mockups, data.mockups || {});
-          S.cloud = Object.assign(def().cloud, data.cloud || {});
+          S.cloud = Object.assign(def().cloud, data.cloud || {}, { apiUrl: DEFAULT_CLOUD_API });
+          S.filesByWeek = Object.assign(def().filesByWeek, data.filesByWeek || {});
           S.submissions = Object.assign({}, data.submissions || {});
-          S.teacher = Object.assign(def().teacher, data.teacher || {});
+          if (!Array.isArray(S.versions)) S.versions = [];
           if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
           if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
           try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (er) {}
-          syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); renderTeacher(); refresh();
+          syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
           toast('Đã khôi phục dữ liệu dự án từ file .json');
         } catch (err) {
           toast('File sao lưu không hợp lệ.');
@@ -1467,7 +1485,11 @@ function simRegister(user, pass, confirm, exists) {
       const k = el.dataset.f;
       if (S.f[k] !== undefined) el.value = S.f[k];
       else if (el.tagName === 'SELECT') S.f[k] = el.value;
-      const h = () => { S.f[k] = el.value; save(); refresh(); };
+      const h = () => {
+        S.f[k] = el.value;
+        if (k === 'studentName' && $('cloudStudentName')) $('cloudStudentName').value = el.value;
+        save(); refresh();
+      };
       el.addEventListener('input', h); el.addEventListener('change', h);
     });
     document.querySelectorAll('[data-c]').forEach((el) => {
@@ -1585,123 +1607,6 @@ function simRegister(user, pass, confirm, exists) {
     if (a && a.p === $('simP').value) simShow(true, 'Đăng nhập đúng → mở form Trang chủ'); else simShow(false, 'Sai tên đăng nhập hoặc mật khẩu');
   });
 
-  /* ---------- Giáo viên ---------- */
-  const T = () => S.teacher;
-  const uid = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  function renderTeacher() {
-    const box = $('tRows'); box.textContent = '';
-    if (!T().students.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Chưa có học viên. Thêm học viên hoặc đồng bộ từ Google Sheet ở trên.'; box.appendChild(e); }
-    else {
-      const hd = document.createElement('div'); hd.className = 'trow head'; hd.innerHTML = '<span>Học viên</span><span>Sản phẩm</span>' + WEEKS.map((w) => `<span>Tuần ${w.n}</span>`).join('') + '<span></span>'; box.appendChild(hd);
-    }
-    T().students.forEach((s) => {
-      const r = document.createElement('div'); r.className = 'trow';
-      const n = document.createElement('b'); n.textContent = s.name; const p = document.createElement('span'); p.textContent = s.project || '';
-      r.append(n, p);
-      [0, 1, 2, 3].forEach((w) => {
-        const sel = document.createElement('select'); sel.className = 'inp'; sel.setAttribute('aria-label', `${s.name}, tuần ${w + 1}`);
-        STATUS.forEach((o) => { const op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if (o[0] === (s.st[w] || '')) op.selected = true; sel.appendChild(op); });
-        sel.addEventListener('change', () => { s.st[w] = sel.value; save(); refresh(); });
-        r.appendChild(sel);
-      });
-      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn danger small'; rm.textContent = 'Xóa';
-      rm.addEventListener('click', () => { T().students = T().students.filter((x) => x.id !== s.id); if (T().sid === s.id) T().sid = ''; save(); renderTeacher(); refresh(); });
-      r.appendChild(rm); box.appendChild(r);
-    });
-    const sel = $('rSid'); sel.textContent = '';
-    if (!T().students.length) { const o = document.createElement('option'); o.value = ''; o.textContent = 'Chưa có học viên'; sel.appendChild(o); }
-    T().students.forEach((s) => { const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
-    if (!T().students.some((x) => x.id === T().sid)) T().sid = T().students.length ? T().students[0].id : '';
-    sel.value = T().sid; $('rWk').value = String(T().n);
-    loadReport(); refresh();
-  }
-  const REP = { rDate: 'date', rDone: 'done', rNot: 'notdone', rStr: 'strength', rImp: 'improve', rFam: 'family' };
-  function curReport() { const k = reportKey(T().sid, T().n); if (!T().reports[k]) T().reports[k] = {}; return T().reports[k]; }
-  function todayStr() { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; }
-  function loadReport() {
-    const r = T().sid ? (T().reports[reportKey(T().sid, T().n)] || {}) : {};
-    Object.keys(REP).forEach((id) => { $(id).value = r[REP[id]] || (id === 'rDate' && T().sid ? todayStr() : ''); });
-    if (T().sid && !r.date) { curReport().date = todayStr(); }
-  }
-  Object.keys(REP).forEach((id) => $(id).addEventListener('input', () => { if (!T().sid) return; curReport()[REP[id]] = $(id).value; save(); refresh(); }));
-  $('rSid').addEventListener('change', () => { T().sid = $('rSid').value; save(); loadReport(); refresh(); });
-  $('rWk').addEventListener('change', () => { T().n = Number($('rWk').value); save(); loadReport(); refresh(); });
-  $('tAdd').addEventListener('click', () => {
-    const n = $('tName').value.trim(); if (!n) { toast('Nhập họ và tên học viên'); return; }
-    T().students.push({ id: uid(), name: n, project: $('tProject').value.trim(), st: ['', '', '', ''] });
-    $('tName').value = ''; $('tProject').value = ''; save(); renderTeacher();
-  });
-
-  function saveTeacherCfg() {
-    S.cloud.apiUrl = $('tApiUrl').value.trim();
-    S.teacher.key = $('tKey').value.trim();
-    S.teacher.classFilter = $('tClassFilter').value.trim().toUpperCase();
-    save(); renderCloudStatus();
-  }
-  $('tApiUrl').addEventListener('input', saveTeacherCfg);
-  $('tKey').addEventListener('input', saveTeacherCfg);
-  $('tClassFilter').addEventListener('input', saveTeacherCfg);
-  $('tPing').addEventListener('click', async () => {
-    saveTeacherCfg();
-    const url = S.cloud.apiUrl;
-    if (!url) { toast('Hãy dán Web App URL trước.'); return; }
-    try {
-      const r = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=ping');
-      const d = await r.json();
-      if (d && d.ok) {
-        $('tCloudMsg').textContent = `Kết nối thành công (${d.service || 'Drive API'} v${d.version || '2.0'}).`;
-        toast('Kết nối Apps Script OK!');
-      } else {
-        throw new Error('Phản hồi không hợp lệ');
-      }
-    } catch (e) {
-      $('tCloudMsg').textContent = 'Không ping được Web App URL. Kiểm tra quyền Deploy ("Anyone").';
-      toast('Lỗi kiểm tra kết nối');
-    }
-  });
-  $('tCopyClassLink').addEventListener('click', async () => {
-    saveTeacherCfg();
-    const url = buildTeacherShareUrl(window.location.href, S.cloud.apiUrl, S.teacher.classFilter || S.cloud.classCode);
-    const ok = await copyText(url);
-    toast(ok ? 'Đã sao chép link lớp gửi cho học sinh!' : url);
-  });
-  $('tCloudSync').addEventListener('click', async () => {
-    saveTeacherCfg();
-    if (!S.cloud.apiUrl || !S.teacher.key) { toast('Cần đủ Web App URL và Teacher Key.'); return; }
-    try {
-      $('tCloudMsg').textContent = 'Đang đồng bộ từ Google Sheet...';
-      const res = await postCloud(S.cloud.apiUrl, {
-        action: 'teacher_sync',
-        teacherKey: S.teacher.key,
-        classCode: S.teacher.classFilter
-      });
-      const mapSt = (x) => (!x ? '' : /Trễ|trễ/i.test(x) ? 'help' : 'ok');
-      (res.students || []).forEach((rs) => {
-        const sid = rs.classCode + '_' + rs.studentId;
-        const stArr = [mapSt(rs.tuan1), mapSt(rs.tuan2), mapSt(rs.tuan3), mapSt(rs.tuan4)];
-        const ex = T().students.find((s) => s.id === sid || s.name === rs.name);
-        if (ex) {
-          ex.project = rs.project || ex.project;
-          ex.st = stArr.map((v, idx) => v || ex.st[idx] || '');
-        } else {
-          T().students.push({ id: sid, name: rs.name || rs.studentId, project: rs.project || '', st: stArr });
-        }
-      });
-      save(); renderTeacher();
-      const sheetLink = res.sheetUrl ? ` <a href="${esc(res.sheetUrl)}" target="_blank" rel="noopener">Mở Sheet ↗</a>` : '';
-      const dirLink = res.folderUrl ? ` · <a href="${esc(res.folderUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>` : '';
-      $('tCloudMsg').innerHTML = `Đã đồng bộ ${(res.students || []).length} học viên &amp; ${(res.logs || []).length} lượt nộp.${sheetLink}${dirLink}`;
-      const logsEl = $('tCloudLogs');
-      logsEl.innerHTML = (res.logs || []).slice(0, 15).map((l) => `<div class="log-row"><div class="log-head"><b>${esc(l.name)} (${esc(l.classCode)}) · ${esc(l.target)}</b><span class="pill ${/trễ/i.test(l.status) ? 'warn' : 'ok'}">${esc(l.status)} · ${esc(l.timestamp)}</span></div>` +
-        `${l.microCheck ? `<div><b>Micro-Check:</b> ${esc(l.microCheck)}</div>` : ''}` +
-        `<div><b>Nhật ký AI:</b> ${esc(l.aiLog || EMPTY)}</div></div>`).join('') || '<div class="empty">Chưa có lượt nộp bài nào.</div>';
-      toast('Đã đồng bộ dữ liệu lớp từ Google Sheet!');
-    } catch (e) {
-      $('tCloudMsg').textContent = e.message || 'Lỗi đồng bộ Google Sheet.';
-      toast(e.message || 'Lỗi đồng bộ.');
-    }
-  });
-
   /* ---------- Sao chép, tải về ---------- */
   const OUT = {
     aiPrompt: buildAiPrompt,
@@ -1718,9 +1623,7 @@ function simRegister(user, pass, confirm, exists) {
     cmd: buildCmd,
     authPy: buildAuthPy,
     mainPy: buildMainPy,
-    dossier: buildDossier,
-    report: buildReport,
-    csv: buildCsv
+    dossier: buildDossier
   };
   let DL = null;
   try {
@@ -1749,13 +1652,19 @@ function simRegister(user, pass, confirm, exists) {
     if (c) { const ok = await copyText(OUT[c.dataset.copy]()); toast(ok ? 'Đã sao chép' : 'Chưa sao chép được. Hãy bôi đen đoạn văn và nhấn Ctrl+C.'); return; }
     const d = ev.target.closest('[data-dl]');
     if (d) {
-      const st = T().students.find((x) => x.id === T().sid);
-      const fn = d.dataset.fn.replace('{name}', slug(eff('studentName'))).replace('{wk}', String(T().n)).replace('{student}', slug(st ? st.name : ''));
+      const fn = d.dataset.fn.replace('{name}', slug(eff('studentName')));
       try { await downloadFile(fn, OUT[d.dataset.dl]()); toast('Đã tải về ' + fn); } catch (e) { toast(e && e.code === 'declined' ? 'Đã hủy' : 'Không tải được. Hãy dùng nút Sao chép.'); }
     }
   });
 
   /* ---------- Cập nhật phần suy ra ---------- */
+  function renderFileList(files) {
+    if (!files || !files.length) return '<div class="tiny">Chưa có tệp nào nộp lên Drive ở mục này.</div>';
+    return '<div class="file-list">' + files.map((f) =>
+      `<div class="file-item"><div class="file-meta"><span class="ver-badge">${esc(f.version || 'v001')}</span><b>${esc(f.name)}</b><span class="tiny">${formatBytes(f.size)} · ${esc(f.uploadedAt || '')}</span></div>` +
+      `<div class="actions" style="margin:0"><button class="btn outline small" type="button" data-open-file="${esc(f.id)}" data-file-name="${esc(f.name)}">Tải / Xem</button></div></div>`
+    ).join('') + '</div>';
+  }
   const swatch = (h) => `<span class="swatch" style="background:${h}"></span>${h}`;
   const OUTH = {
     timeline: () => {
@@ -1805,23 +1714,32 @@ function simRegister(user, pass, confirm, exists) {
     weekBars: () => weekPercents().map((x, i) => `<div class="wkbar"><span>Tuần ${i + 1} · ${esc(WEEKS[i].name)}</span><div class="track"><i style="width:${x}%"></i></div><span class="p">${x}%</span></div>`).join(''),
     namesNum: () => String(Object.values(nameIssues()).filter(Boolean).length),
     mainWarn: () => '',
-    tSummary: () => {
-      const n = T().students.length;
-      return [0, 1, 2, 3].map((w) => {
-        const cnt = { ok: 0, help: 0, late: 0, '': 0 };
-        T().students.forEach((s) => { cnt[s.st[w] || ''] += 1; });
-        const part = (k, color) => `<i style="width:${n ? cnt[k] / n * 100 : 0}%;background:${color}"></i>`;
-        return `<div class="sumbar"><b>Tuần ${w + 1}</b><div class="stack">${part('ok', '#0f9f7a')}${part('help', '#d68b12')}${part('late', '#b42318')}</div><div class="tiny">Đúng tiến độ ${cnt.ok} · Cần hỗ trợ ${cnt.help} · Chậm ${cnt.late} · Chưa đánh giá ${cnt['']}</div></div>`;
-      }).join('');
+    allFiles: () => {
+      const blocks = WEEKS.map((w) => {
+        const list = (S.filesByWeek && S.filesByWeek[w.slug]) || [];
+        return `<div class="card" style="margin-bottom:10px"><b>Tuần ${w.n} · ${w.lab} (${list.length} tệp)</b>${renderFileList(list)}</div>`;
+      });
+      return blocks.join('');
+    },
+    versionHistory: () => {
+      const vers = S.versions || [];
+      if (!vers.length) return '<div class="empty">Chưa có phiên bản nào lưu trên Drive. Nhập tên ở trên rồi bấm "Mở hồ sơ của em" hoặc "Lưu phiên bản mới".</div>';
+      return '<div class="ver-list">' + vers.map((v) =>
+        `<div class="ver-item"><div class="file-meta"><span class="ver-badge">${esc(v.version)}</span><b>${esc(v.tag === 'nhap' ? 'Lưu nháp' : 'Nộp ' + v.tag)}</b><span class="tiny">${esc(v.savedAt || '')}</span></div>` +
+        `<div class="actions" style="margin:0"><button class="btn outline small" type="button" data-load-ver="${esc(v.id)}" data-ver-label="${esc(v.version)}">Xem phiên bản này</button></div></div>`
+      ).join('') + '</div>';
     }
   };
   ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4'].forEach((tg) => {
     OUTH['sub_' + tg] = () => {
       const sub = S.submissions && S.submissions[tg];
       if (!sub) return `<span class="pill muted">Chưa nộp mục ${tg} lên Drive</span>`;
-      const cls = /trễ/i.test(sub.status) ? 'warn' : 'ok';
       const lnk = sub.folderUrl ? ` <a href="${esc(sub.folderUrl)}" target="_blank" rel="noopener">Mở thư mục Drive ↗</a>` : '';
-      return `<span class="pill ${cls}">${esc(sub.status)} · ${esc(sub.submittedAt)} (${sub.filesCount || 0} tệp)</span>${lnk}`;
+      return `<span class="pill ok">${esc(sub.status)} · ${esc(sub.submittedAt)} (${sub.filesCount || 0} tệp)</span>${lnk}`;
+    };
+    OUTH['files_' + tg] = () => {
+      const list = (S.filesByWeek && S.filesByWeek[tg]) || [];
+      return list.length ? `<div><b class="tiny" style="text-transform:uppercase">Tệp đã nộp trên Drive (${list.length})</b>${renderFileList(list)}</div>` : '';
     };
   });
 
@@ -1847,24 +1765,24 @@ function simRegister(user, pass, confirm, exists) {
     $('progressPct').textContent = all + '%'; $('progressFill').style.width = all + '%';
   }
 
-  /* ---------- Xóa dữ liệu Tuần 1–4 ---------- */
+  /* ---------- Xóa bản nháp cục bộ ---------- */
   let armT = null;
   $('resetAll').addEventListener('click', () => {
     const b = $('resetAll');
-    const label = 'Xóa dữ liệu Tuần 1–4 và làm lại';
+    const label = 'Xóa bản nháp trên máy này (không xóa bài trên Drive)';
     if (b.dataset.armed === '1') {
       clearTimeout(armT); b.dataset.armed = ''; b.textContent = label;
-      const keepTeacher = S.teacher;
       const keepApi = S.cloud.apiUrl;
-      S = def(); S.teacher = keepTeacher; S.cloud.apiUrl = keepApi;
+      S = def(); S.cloud.apiUrl = keepApi;
       try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
       syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
-      toast('Đã xóa dữ liệu học viên Tuần 1–4. Bảng giáo viên được giữ lại.');
-    } else { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xóa'; armT = setTimeout(() => { b.dataset.armed = ''; b.textContent = label; }, 4000); }
+      toast('Đã xóa bản nháp trên trình duyệt này. Các phiên bản trên Drive vẫn giữ nguyên.');
+    } else { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xóa bản nháp'; armT = setTimeout(() => { b.dataset.armed = ''; b.textContent = label; }, 4000); }
   });
 
   /* ---------- Khởi tạo ---------- */
-  bindStatic(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); drawTimer(); renderTeacher(); refresh();
+  bindStatic(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); drawTimer(); refresh();
+  loadStudentAutocomplete();
   const h = location.hash.replace('#', '');
   showPage(PAGES.some((p) => p[0] === h) ? h : 'tuan-1');
 })();

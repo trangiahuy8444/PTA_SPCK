@@ -1,4 +1,4 @@
-// Kiểm thử giao diện hub, hàm thuần và Apps Script bằng jsdom + vm.  Chạy: npm test
+// Kiểm thử giao diện hub, hàm thuần và Apps Script v3 bằng jsdom + vm.  Chạy: npm test
 const { JSDOM, VirtualConsole } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
@@ -8,11 +8,11 @@ const assert = require('assert');
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'site', 'index.html'), 'utf8');
 
-// 0. Bảo mật & cú pháp Google Apps Script (apps-script/Code.gs)
-assert.ok(!html.includes(['GV', 'A69B2C0F'].join('-')), 'Không lộ TEACHER_KEY vào mã web công khai');
+// 0. Kiểm tra bảo mật & Google Apps Script (apps-script/Code.gs) bất biến (không ghi đè)
 const gsCode = fs.readFileSync(path.join(ROOT, 'apps-script', 'Code.gs'), 'utf8');
 new vm.Script(gsCode);
-['setupProject', 'doGet', 'doPost', 'handleLoadState_', 'handleSaveState_', 'handleSubmitWeek_', 'handleTeacherSync_'].forEach((fn) => {
+assert.ok(!gsCode.includes('.setContent('), 'Code.gs không dùng setContent để ghi đè file');
+['setupProject', 'doGet', 'doPost', 'handleLoadStudent_', 'handleLoadVersion_', 'handleSaveVersion_', 'handleSubmitWeek_', 'handleGetFile_', 'handleListStudents_'].forEach((fn) => {
   assert.ok(gsCode.includes('function ' + fn), 'Code.gs có hàm ' + fn);
 });
 
@@ -66,7 +66,7 @@ const guardedMain = ctx.buildMainPy();
 assert.ok(guardedMain.includes('__DAT_LAI_TEN_btnLogin__'), 'Tên rỗng sinh placeholder an toàn');
 assert.ok(!guardedMain.includes('self.ui..clicked'), 'Không sinh cú pháp lỗi self.ui..');
 
-// Phase 2 pure: buildAssetsPy & buildWeekAiPrompt
+// Phase 2 pure
 ctx.S = ctx.def();
 const assetsPy = ctx.buildAssetsPy();
 assert.ok(assetsPy.includes('BASE_DIR') && assetsPy.includes('QIcon'), 'buildAssetsPy dùng đường dẫn tương đối BASE_DIR');
@@ -77,25 +77,20 @@ assert.ok(ctx.buildWeekAiPrompt(2).includes('StudyFlow') && ctx.buildWeekAiPromp
 assert.ok(ctx.buildWeekAiPrompt(3).includes('txtLoginUser'));
 assert.ok(ctx.buildWeekAiPrompt(4).includes('Pomodoro'));
 
-// Phase 3 pure: DEFAULT_CLOUD_API, hashPin, validateCloudIdentity, buildSubmitPayload, buildTeacherShareUrl
+// Phase 3 pure (tra cứu bằng tên học sinh + formatBytes + buildSubmitPayload)
 assert.strictEqual(ctx.DEFAULT_CLOUD_API, 'https://script.google.com/macros/s/AKfycbwTyXdfIQLlGBccyg5gJf06rHKNM-l3CwxnpT3FRZJLY6B28DNzWY6TFHtSUI8rbsy4KA/exec');
-const h1 = ctx.hashPin('1234');
-const h2 = ctx.hashPin('1234');
-assert.strictEqual(h1, h2, 'hashPin deterministic');
-assert.strictEqual(h1.length, 16, 'hashPin dài 16 ký tự hex');
-assert.notStrictEqual(h1, '1234', 'hashPin không trả plaintext');
-assert.ok(ctx.validateCloudIdentity('', 'khang', '1234').length > 0);
-assert.ok(ctx.validateCloudIdentity('PTA01', 'khang', '12ab').length > 0);
-assert.strictEqual(ctx.validateCloudIdentity('PTA01', 'khang', '1234'), '');
+assert.strictEqual(ctx.studentKeyFromName('Nguyễn Minh Khang'), 'nguyen-minh-khang');
+assert.strictEqual(ctx.studentKeyFromName('Đặng Ánh Dương'), 'dang-anh-duong');
+assert.ok(ctx.validateStudentName('A').length > 0);
+assert.strictEqual(ctx.validateStudentName('Nguyễn Minh Khang'), '');
+assert.strictEqual(ctx.formatBytes(512), '512 B');
+assert.strictEqual(ctx.formatBytes(2048), '2.0 KB');
 
 ctx.S.f.aiAsk2 = 'Hỏi QSS';
-const payload = ctx.buildSubmitPayload('tuan-2', { classCode: 'pta01', studentId: 'khang', pinHash: h1, files: [] });
+const payload = ctx.buildSubmitPayload('tuan-2', { studentName: 'Nguyễn Minh Khang', files: [] });
 assert.strictEqual(payload.action, 'submit_week');
-assert.strictEqual(payload.classCode, 'PTA01');
-assert.strictEqual(payload.microCheck, '');
+assert.strictEqual(payload.studentName, 'Nguyễn Minh Khang');
 assert.ok(payload.aiLog.includes('Hỏi QSS'));
-const shareUrl = ctx.buildTeacherShareUrl('https://trangiahuy8444.github.io/PTA_SPCK/#tuan-2', 'https://script.google.com/macros/s/abc/exec', 'pta01');
-assert.strictEqual(shareUrl, 'https://trangiahuy8444.github.io/PTA_SPCK/?api=https%3A%2F%2Fscript.google.com%2Fmacros%2Fs%2Fabc%2Fexec&class=PTA01#tuan-1');
 
 // Kiểm tra simRegister
 assert.strictEqual(ctx.simRegister('ab', '123456', '123456', false).ok, false);
@@ -121,24 +116,32 @@ assert.strictEqual(migState.f.specLogin, 'txtLoginUser');
 assert.strictEqual(migState.c.w1c1, true);
 assert.strictEqual(migState.c.w1c2, false);
 
-// Kiểm tra buildCsv & buildReport
-ctx.S = ctx.def();
-ctx.S.teacher.students = [{ id: 's1', name: 'Bình', project: 'StudyFlow', st: ['ok', 'help', '', ''] }];
-ctx.S.teacher.sid = 's1';
-ctx.S.teacher.n = 2;
-assert.ok(ctx.buildCsv().includes('"Bình","StudyFlow","Đúng tiến độ","Cần hỗ trợ"'));
-assert.ok(ctx.buildReport().includes('Học viên: Bình'));
-
-// 2. Kiểm thử DOM & Tương tác bằng jsdom
+// 2. Kiểm thử DOM & Tương tác bằng jsdom (pre-seed phiên bản & file mẫu để kiểm tra hiển thị)
 const errs = [];
 const vc = new VirtualConsole();
 vc.on('jsdomError', (e) => { if (!/scrollTo/.test(String(e.message))) errs.push(String(e.message)); });
-const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://example.test/index.html', virtualConsole: vc, pretendToBeVisual: true });
+const dom = new JSDOM(html, {
+  runScripts: 'dangerously',
+  url: 'https://example.test/index.html',
+  virtualConsole: vc,
+  pretendToBeVisual: true,
+  beforeParse(win) {
+    win.localStorage.setItem('apa-hub-4-tuan-v1', JSON.stringify({
+      f: { studentName: 'Nguyễn Minh Khang' },
+      versions: [{ id: 'ver1', fileName: 'v001_nhap.json', version: 'v001', tag: 'nhap', savedAt: '2026-11-28 16:50:00' }],
+      filesByWeek: {
+        'tuan-1': [{ id: 'file1', version: 'v001', name: 'uizard_login.jpg', size: 2048, uploadedAt: '2026-11-28 16:50:00' }],
+        'tuan-2': [], 'tuan-3': [], 'tuan-4': []
+      }
+    }));
+  }
+});
 const w = dom.window, d = w.document;
 
 setTimeout(() => {
   const navs = [...d.querySelectorAll('.navbtn')].map((b) => b.dataset.go);
-  assert.deepStrictEqual(navs, ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4', 'ho-so', 'giao-vien'], 'thanh bên');
+  assert.deepStrictEqual(navs, ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4', 'ho-so'], 'đã bỏ tab giáo viên');
+  assert.strictEqual(d.getElementById('p-giao-vien'), null, 'không còn panel giáo viên');
   assert.deepStrictEqual([...d.querySelectorAll('.panel.active')].map((p) => p.dataset.slug), ['tuan-1'], 'trang mặc định');
   assert.strictEqual(d.querySelectorAll('#p-tuan-1 iframe').length, 0, 'không còn iframe ở Tuần 1');
 
@@ -150,17 +153,29 @@ setTimeout(() => {
   ['studentName', 'studentClass', 'appName', 'appDesc', 'pal_p', 'pal_b', 'pal_t'].forEach((k) => assert.ok(d.getElementById('f_' + k), 'thiếu ô ' + k));
   assert.ok(d.querySelector('#p-tuan-1 #resetAll'), 'nút xóa dữ liệu nằm ở Tuần 1');
 
-  // Cloud Bar & Teacher Cloud UI + điền sẵn URL Apps Script
-  ['cloudClass', 'cloudStudent', 'cloudPin', 'btnCloudLoad', 'btnCloudSave', 'tApiUrl', 'tKey', 'tCloudSync', 'tCopyClassLink'].forEach((id) => {
+  // Cloud Bar chỉ có tên học sinh (không còn PIN, Mã lớp hay phần Giáo viên)
+  ['cloudStudentName', 'btnCloudLoad', 'btnCloudSave'].forEach((id) => {
     assert.ok(d.getElementById(id), 'thiếu phần tử Cloud #' + id);
   });
-  assert.strictEqual(d.getElementById('tApiUrl').value, ctx.DEFAULT_CLOUD_API, 'Điền sẵn Web App URL vào tab Giáo viên');
+  ['cloudPin', 'cloudClass', 'tApiUrl', 'tKey'].forEach((id) => {
+    assert.strictEqual(d.getElementById(id), null, 'đã bỏ phần tử #' + id);
+  });
   ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4'].forEach((tg) => {
     assert.ok(d.querySelector(`[data-submit-target="${tg}"]`), 'thiếu nút nộp Drive cho ' + tg);
+    assert.ok(d.querySelector(`[data-outhtml="files_${tg}"]`), 'thiếu danh sách file cho ' + tg);
   });
-  assert.strictEqual(d.querySelectorAll('[data-submit-target^="btvn-"]').length, 0, 'đã bỏ các khung nộp BTVN');
 
-  // Phase 2 DOM checks: Kho Icon/Ảnh + pyrcc6 + Debug 5 + Mini templates + AI Log
+  // Đồng bộ tên giữa #cloudStudentName và #f_studentName + render files/versions
+  const cs = d.getElementById('cloudStudentName');
+  cs.value = 'Nguyễn Minh Khang'; cs.dispatchEvent(new w.Event('input'));
+  assert.strictEqual(d.getElementById('f_studentName').value, 'Nguyễn Minh Khang', 'tên đồng bộ sang form Tuần 1');
+  assert.ok(d.querySelector('[data-outhtml="allFiles"]'), 'Hồ sơ có kho file');
+  assert.ok(d.querySelector('[data-outhtml="versionHistory"]'), 'Hồ sơ có lịch sử phiên bản');
+  assert.ok(d.querySelector('[data-outhtml="files_tuan-1"] [data-open-file="file1"]'), 'Hiển thị nút Tải/Xem file Tuần 1');
+  assert.ok(d.querySelector('[data-outhtml="allFiles"] [data-open-file="file1"]'), 'Hiển thị file trong Hồ sơ');
+  assert.ok(d.querySelector('[data-outhtml="versionHistory"] [data-load-ver="ver1"]'), 'Hiển thị nút Xem phiên bản cũ');
+
+  // Phase 2 DOM checks
   assert.ok(d.getElementById('p-tuan-2').innerHTML.includes('lucide.dev'), 'Tuần 2 có Lucide');
   assert.ok(d.getElementById('p-tuan-2').innerHTML.includes('undraw.co'), 'Tuần 2 có unDraw');
   assert.ok(d.getElementById('p-tuan-2').innerHTML.includes('pyrcc6'), 'Tuần 2 có cảnh báo pyrcc6');
@@ -196,6 +211,6 @@ setTimeout(() => {
   const c = d.getElementById('f_studentClass'); c.value = '8A1'; c.dispatchEvent(new w.Event('input'));
   assert.ok(/8A1/.test(d.querySelector('[data-out="dossier"]').textContent), 'lớp đi vào hồ sơ');
   assert.deepStrictEqual(errs, [], 'lỗi script');
-  console.log('OK: hub + pure unit tests + apps-script syntax');
+  console.log('OK: student-only hub + immutable versioning tests');
   w.close(); process.exit(0);
 }, 300);

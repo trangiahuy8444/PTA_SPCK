@@ -81,6 +81,21 @@ assert.ok(ctx.buildWeekAiPrompt(2).includes('StudyFlow') && ctx.buildWeekAiPromp
 assert.ok(ctx.buildWeekAiPrompt(3).includes('txtLoginUser'));
 assert.ok(ctx.buildWeekAiPrompt(4).includes('Pomodoro'));
 
+// QSS theo từng thành phần + code mẫu PTA (uic.loadUi) + AI Debugger
+assert.ok(ctx.buildQssSnippet('sidebar').includes('QFrame#sidebar_frame') && ctx.buildQssSnippet('sidebar').includes('border: none;'));
+assert.ok(ctx.buildQssSnippet('card').includes('QLabel') && ctx.buildQssSnippet('card').includes('border: none;'));
+assert.ok(ctx.buildQssSnippet('category').includes('QToolButton'));
+assert.ok(ctx.buildPtaReviewPy().includes('uic.loadUi("gui/login.ui", self)') && ctx.buildPtaReviewPy().includes('uic.loadUi("gui/dashboard.ui", self)'));
+ctx.S = ctx.def();
+assert.ok(ctx.buildMainUicPy().includes('uic.loadUi') && ctx.buildMainUicPy().includes('self.txtLoginUser'));
+ctx.S.names.btnLogin = '';
+assert.ok(ctx.buildMainUicPy().includes('__DAT_LAI_TEN_btnLogin__'), 'buildMainUicPy giữ placeholder an toàn khi tên rỗng');
+ctx.S = ctx.def();
+ctx.S.f.errTrace = "AttributeError: 'Login' object has no attribute 'btn_login'";
+ctx.S.f.errCode = 'self.btn_login.clicked.connect(self.check_login)';
+const aiW3 = ctx.buildWeekAiPrompt(3);
+assert.ok(aiW3.includes("has no attribute 'btn_login'") && aiW3.includes('self.btn_login.clicked.connect'), 'Prompt AI Tuần 3 nhúng lỗi và code');
+
 // Phase 3 pure (chuẩn hóa tên viết thường không dấu + formatBytes + buildSubmitPayload)
 assert.strictEqual(ctx.DEFAULT_CLOUD_API, 'https://script.google.com/macros/s/AKfycbwTyXdfIQLlGBccyg5gJf06rHKNM-l3CwxnpT3FRZJLY6B28DNzWY6TFHtSUI8rbsy4KA/exec');
 assert.strictEqual(ctx.normalizeStudentName('  Nguyễn  Minh Khang '), 'nguyen minh khang');
@@ -249,6 +264,22 @@ setTimeout(() => {
   d.querySelector('.btnrow [data-tab="tuan-2:b"]').click();
   assert.strictEqual(scrollCalls.length, 1, 'bấm nút bước tiếp ở đáy .btnrow khi đã cuộn sâu sẽ cuộn về đầu panel');
   assert.strictEqual(scrollCalls[0][0].top, 220, 'cuộn về đúng mép trên panel dưới sticky topbar (không phải 0)');
+
+  // Kiểm tra thư viện QSS theo khối (Tuần 2), ôn bài PTA + chuyển chế độ main.py (Tuần 3), và AI Debugger
+  scrollCalls.length = 0;
+  d.querySelector('[data-qss-tab="card"]').click();
+  assert.ok(d.querySelector('[data-out="qssSnippet"]').textContent.includes('QFrame:hover'), 'Chuyển mẫu QSS sang Card');
+  assert.ok(d.querySelector('[data-out="ptaReviewPy"]').textContent.includes('uic.loadUi("gui/login.ui", self)'), 'Tuần 3 có code ôn bài PTA uic.loadUi');
+  assert.ok(d.querySelector('[data-out="mainPyActive"]').textContent.includes('uic.loadUi'), 'Mặc định main.py hiển thị cách 1 (uic.loadUi)');
+  d.querySelector('[data-main-mode="pyuic"]').click();
+  assert.ok(d.querySelector('[data-out="mainPyActive"]').textContent.includes('Ui_Login'), 'Chuyển main.py sang cách 2 (pyuic6)');
+  d.querySelector('[data-main-mode="uic"]').click();
+  assert.ok(d.querySelector('[data-out="mainPyActive"]').textContent.includes('uic.loadUi'), 'Chuyển lại main.py sang cách 1 (uic.loadUi)');
+  assert.strictEqual(scrollCalls.length, 0, 'Bấm tab QSS / chế độ main.py không cuộn trang');
+  const et = d.getElementById('f_errTrace');
+  et.value = 'FileNotFoundError: gui/login.ui';
+  et.dispatchEvent(new w.Event('input'));
+  assert.ok(d.querySelector('[data-out="aiPromptW3"]').textContent.includes('FileNotFoundError: gui/login.ui'), 'Prompt AI Tuần 3 cập nhật theo lỗi vừa dán');
 
   assert.deepStrictEqual(errs, [], 'lỗi script');
   console.log('OK: student-only hub + immutable versioning tests');

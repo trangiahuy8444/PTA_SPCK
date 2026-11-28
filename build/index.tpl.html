@@ -113,7 +113,54 @@ const DEBUG_5 = [
   ["AttributeError: 'Ui_MainWindow' object has no attribute '...'", 'Tên objectName đặt trong Qt Designer không khớp với tên trong main.py, hoặc vừa sửa .ui nhưng quên chạy lại pyuic6.'],
   ['Sửa giao diện .ui nhưng khi chạy app vẫn thấy giao diện cũ', 'Quên chạy lại lệnh pyuic6 login.ui -o ui_login.py (hoặc file tương ứng) sau khi nhấn Ctrl+S trong Qt Designer.'],
   ['Không tìm thấy file users.json hoặc ảnh trong assets/', 'Đứng ở thư mục cha để chạy python du-an/main.py khiến đường dẫn tương đối bị lệch. Hãy cd vào đúng thư mục dự án hoặc dùng BASE_DIR = os.path.dirname(os.path.abspath(__file__)).'],
-  ['Ô mật khẩu hiện rõ từng chữ khi gõ', 'Trong Qt Designer chưa chọn ô mật khẩu rồi đổi thuộc tính echoMode thành Password.']
+  ['Ô mật khẩu hiện rõ từng chữ khi gõ', 'Trong Qt Designer chưa chọn ô mật khẩu rồi đổi thuộc tính echoMode thành Password.'],
+  ['Cửa sổ mở ra trắng tinh hoặc không thấy nút bấm (uic.loadUi)', 'Quên truyền ", self" ở cuối lệnh uic.loadUi("gui/home.ui", self), ví dụ viết thiếu thành uic.loadUi("gui/dashboard.ui").'],
+  ["FileNotFoundError: No such file or directory: 'gui/login.ui'", 'Sai tên thư mục chứa file .ui (gui/ hay ui/ hay để cùng cấp main.py) hoặc đang chạy python ở sai thư mục dự án.'],
+  ["TypeError: argument 1 has unexpected type 'NoneType'", 'Khi nối nút lỡ viết thừa dấu ngoặc () như .clicked.connect(self.check_login()). Phải bỏ ngoặc thành .clicked.connect(self.check_login).']
+];
+const QSS_SNIPPETS = [
+  {
+    id: 'window',
+    title: '1. Nền cửa sổ',
+    target: 'centralwidget (MainWindow) · geometry 950×655 · max 1100×720',
+    tip: 'Dùng QWidget làm khay chứa vô hình để gom nhóm; dùng QFrame khi cần khung có viền và bo góc. Nhớ chuột phải statusbar → Remove Status Bar nếu không dùng thanh đáy.',
+    build: (P, B) => `/* Chuột phải centralwidget → Change styleSheet... */\nbackground-color: ${B};`
+  },
+  {
+    id: 'sidebar',
+    title: '2. Thanh điều hướng',
+    target: 'QFrame#sidebar_frame (rộng cố định 60px · Vertical Spacer)',
+    tip: 'Bắt buộc ghi border: none; để xóa viền nổi 3D trên Windows và giúp nút trong suốt, bo góc được trên macOS Aqua. Các nút bên trong phải nằm dưới sidebar_frame trong Object Inspector.',
+    build: (P) => `QFrame#sidebar_frame {\n    background-color: ${P};\n    border-radius: 16px;\n}\nQFrame#sidebar_frame QPushButton {\n    background-color: transparent;\n    border: none;\n    border-radius: 10px;\n    padding: 8px;\n}\nQFrame#sidebar_frame QPushButton:hover {\n    background-color: rgba(255, 255, 255, 0.2);\n}\nQFrame#sidebar_frame QPushButton:pressed {\n    background-color: rgba(255, 255, 255, 0.35);\n}`
+  },
+  {
+    id: 'header',
+    title: '3. Header & Ô tìm kiếm',
+    target: 'QFrame#header_frame + QWidget#search_box + QLineEdit#txt_search',
+    tip: 'Khóa ảnh đại diện minimumSize = maximumSize (60×60) trước khi bật scaledContents để ảnh không méo. Icon kính lúp dùng QLabel (lbl_search_icon), còn ô gõ chữ QLineEdit cần border: none; background-color: transparent; để tiệp mịn.',
+    build: (P, B, T) => `/* 1) QFrame#header_frame */\nQFrame#header_frame {\n    background-color: ${P};\n    border-radius: 15px;\n}\n\n/* 2) Nhãn địa chỉ (lbl_user_location) & tên (lbl_user_name) */\nQLabel#lbl_user_location {\n    color: #DCE8F5;\n    font-size: 12px;\n}\nQLabel#lbl_user_name {\n    color: #FFFFFF;\n    font-size: 16px;\n    font-weight: bold;\n}\n\n/* 3) Khung bọc thanh tìm kiếm (QWidget) & QLineEdit#txt_search */\nQWidget#search_box {\n    background-color: #F0DFD3;\n    border-radius: 12px;\n    padding: 6px 12px;\n}\nQLineEdit#txt_search {\n    border: none;\n    background-color: transparent;\n    font-size: 14px;\n    color: ${T};\n}`
+  },
+  {
+    id: 'heading',
+    title: '4. Tiêu đề Win/Mac',
+    target: 'QLabel tiêu đề (alignment: AlignHCenter)',
+    tip: "Chuỗi 'Segoe UI', 'SF Pro Display', Arial giúp Windows dùng Segoe UI và macOS tự chuyển sang SF Pro Display. Luôn dùng đơn vị px thay vì pt để cỡ chữ đồng đều giữa hai máy.",
+    build: (P) => `/* Dán cho QLabel tiêu đề chính */\ncolor: ${P};\nfont-family: 'Segoe UI', 'SF Pro Display', Arial;\nfont-size: 22px;\nfont-weight: bold;`
+  },
+  {
+    id: 'category',
+    title: '5. Nút danh mục',
+    target: 'QToolButton (ToolButtonTextUnderIcon · minimumSize 130×110 · icon 50×50)',
+    tip: 'Dùng QToolButton với toolButtonStyle = ToolButtonTextUnderIcon để đưa chữ xuống ngay dưới icon mà không cần lồng Layout. Nên chọn icon từ 48×48 trở lên hoặc .svg để hiển thị sắc nét.',
+    build: (P) => `QToolButton {\n    background-color: #FFFFFF;\n    border: 1px solid #E8E2D9;\n    border-radius: 14px;\n    color: ${P};\n    font-size: 13px;\n    font-weight: bold;\n    padding: 12px;\n}\nQToolButton:hover {\n    background-color: #F0F6FC;\n    border: 1px solid ${P};\n}\nQToolButton:pressed {\n    background-color: #DCEAF7;\n}`
+  },
+  {
+    id: 'card',
+    title: '6. Thẻ Card QFrame',
+    target: 'QFrame#card_1..3 (rộng 240–320px · nhân bản Ctrl+C / Ctrl+V)',
+    tip: 'Đoạn QLabel { border: none; background-color: transparent; } rất quan trọng để các QLabel chữ và ảnh bên trong không bị kế thừa viền 1px của QFrame cha.',
+    build: (P) => `QFrame {\n    background-color: #EAE4DC;\n    border: 1px solid #DCD4C8;\n    border-radius: 16px;\n}\nQFrame:hover {\n    background-color: #E2DACF;\n    border: 1px solid ${P};\n}\nQLabel {\n    border: none;\n    background-color: transparent;\n}\n\n/* Dán riêng cho nhãn tiêu đề trong thẻ */\nQLabel#lbl_card_title {\n    font-size: 15px;\n    font-weight: bold;\n    color: #222222;\n}\n/* Dán riêng cho nhãn mô tả phụ trong thẻ */\nQLabel#lbl_card_sub {\n    font-size: 12px;\n    color: #555555;\n}`
+  }
 ];
 const MINI_TEMPLATES = [
   {
@@ -543,10 +590,16 @@ function buildWeekAiPrompt(w) {
   }
   if (w === 3) {
     const names = allWidgetRows().map((r) => `${r.name} (${r.cls})`).join(', ');
+    const trace = val('errTrace') || '[DÁN LỖI TRACEBACK TỪ TERMINAL VÀO ĐÂY]';
+    const code = val('errCode');
+    const codeBlockTxt = code ? `\nĐoạn code chỗ bị lỗi của mình:\n\`\`\`python\n${code}\n\`\`\`\n` : '';
     return `Mình đang làm app Python + PyQt6 với 3 cửa sổ riêng (login.ui, register.ui, home.ui).\n` +
       `Tên các widget hiện có của mình là: ${names}.\n` +
-      `Khi chạy chương trình, mình gặp thông báo lỗi sau:\n[DÁN LỖI TRACEBACK VÀO ĐÂY]\n` +
-      `Hãy giải thích nguyên nhân ngắn gọn bằng tiếng Việt dễ hiểu cho học sinh cấp 2/3, chỉ rõ file nào cần kiểm tra (ui_*.py, main.py hay auth.py) và gợi ý 2 bước tự sửa, KHÔNG viết lại cả file.`;
+      `Khi chạy chương trình, mình gặp thông báo lỗi sau:\n\`\`\`\n${trace}\n\`\`\`\n${codeBlockTxt}` +
+      `Hãy giải thích nguyên nhân ngắn gọn bằng tiếng Việt dễ hiểu cho học sinh cấp 2/3:\n` +
+      `1. Kiểm tra xem lỗi có phải do thiếu ", self" trong uic.loadUi(..., self), sai đường dẫn file .ui, hoặc sai tên objectName hay không.\n` +
+      `2. Chỉ rõ file và dòng cần kiểm tra (file .ui, main.py hay auth.py).\n` +
+      `3. Gợi ý 2–3 bước tự sửa ngắn gọn, KHÔNG viết lại cả file.`;
   }
   const cname = val('custName') || '[tên chức năng riêng]';
   const cdata = val('custData') || '[dữ liệu cần lưu]';
@@ -582,6 +635,10 @@ function buildQss() {
     `QPushButton[secondary="true"] {\n    background-color: transparent;\n    color: ${P};\n    border: 1px solid ${P};\n}\n\n` +
     `QLineEdit {\n    background-color: white;\n    color: ${T};\n    border: 1px solid #C9D1E3;\n    border-radius: 8px;\n    padding: 6px 8px;\n}\n\n` +
     `QLineEdit:focus {\n    border: 1px solid ${P};\n}`;
+}
+function buildQssSnippet(id) {
+  const item = QSS_SNIPPETS.find((x) => x.id === id) || QSS_SNIPPETS[0];
+  return item.build(hexv('pal_p'), hexv('pal_b'), hexv('pal_t'));
 }
 function buildCmd() {
   return `# Cách 1 (chạy trong thư mục dự án)\npyuic6 login.ui -o ui_login.py\npyuic6 register.ui -o ui_register.py\npyuic6 home.ui -o ui_home.py\n\n# Cách 2 (nếu cách 1 báo không tìm thấy lệnh)\npython -m PyQt6.uic.pyuic login.ui -o ui_login.py\npython -m PyQt6.uic.pyuic register.ui -o ui_register.py\npython -m PyQt6.uic.pyuic home.ui -o ui_home.py`;
@@ -660,6 +717,156 @@ class LoginWindow(QMainWindow):
     def handle_login(self):
         username = self.ui.${n('loginUser')}.text().strip()
         if self.auth.login(username, self.ui.${n('loginPass')}.text()):
+            self.home_window = HomeWindow(self, username)
+            self.home_window.show()
+            self.hide()
+        else:
+            QMessageBox.warning(self, "Đăng nhập", "Sai tên đăng nhập hoặc mật khẩu")
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = LoginWindow()
+    window.show()
+    sys.exit(app.exec())
+`;
+}
+function buildPtaReviewPy() {
+  return `import sys
+from PyQt6 import uic
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
+
+
+class Login(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        # 1. Mở giao diện .ui (LUÔN có ", self" ở cuối)
+        uic.loadUi("gui/login.ui", self)
+        # 2. Nối sự kiện nút bấm (KHÔNG viết dấu ngoặc () sau tên hàm)
+        self.btn_register.clicked.connect(self.show_register)
+        self.btn_login.clicked.connect(self.check_login)
+        self.msg_box = QMessageBox()
+
+    def check_login(self):
+        username = self.txt_username.text().strip()
+        password = self.txt_password.text()
+        if username == "admin@example.com" and password == "admin":
+            # 3. Chuyển giao diện: mở cửa sổ mới rồi đóng/ẩn cửa sổ cũ
+            main.show()
+            self.close()
+        else:
+            self.msg_box.setText("Vui lòng kiểm tra lại thông tin đăng nhập")
+            self.msg_box.setIcon(QMessageBox.Icon.Warning)
+            self.msg_box.exec()
+
+    def show_register(self):
+        register.show()
+        self.close()
+
+
+class Register(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        uic.loadUi("gui/register.ui", self)
+        self.btn_login.clicked.connect(self.show_login)
+        self.btn_register.clicked.connect(self.show_login)
+        self.msg_box = QMessageBox()
+
+    def show_login(self):
+        login.show()
+        self.close()
+
+
+class Main(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        uic.loadUi("gui/dashboard.ui", self)  # Nhớ truyền ", self"!
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    login = Login()
+    register = Register()
+    main = Main()
+    login.show()
+    sys.exit(app.exec())
+`;
+}
+function buildMainUicPy() {
+  const n = safeName;
+  return `import os
+import sys
+
+from PyQt6 import uic
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
+
+from auth import AuthService
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Nếu em đặt login.ui, register.ui, home.ui cùng thư mục với main.py,
+# hãy đổi "gui" thành "" trong các dòng os.path.join bên dưới.
+UI_DIR = os.path.join(BASE_DIR, "gui")
+
+
+class HomeWindow(QMainWindow):
+    def __init__(self, login_window, username):
+        super().__init__()
+        uic.loadUi(os.path.join(UI_DIR, "home.ui"), self)
+        self.login_window = login_window
+        self.${n('lblWelcome')}.setText(f"Xin chào, {username}!")
+        self.${n('btnLogout')}.clicked.connect(self.handle_logout)
+
+    def handle_logout(self):
+        self.login_window.${n('loginPass')}.clear()
+        self.login_window.show()
+        self.close()
+
+
+class RegisterWindow(QMainWindow):
+    def __init__(self, login_window, auth):
+        super().__init__()
+        uic.loadUi(os.path.join(UI_DIR, "register.ui"), self)
+        self.login_window = login_window
+        self.auth = auth
+        self.${n('btnRegister')}.clicked.connect(self.handle_register)
+        self.${n('btnToLogin')}.clicked.connect(self.back_to_login)
+
+    def handle_register(self):
+        ok, message = self.auth.register(
+            self.${n('regUser')}.text(),
+            self.${n('regPass')}.text(),
+            self.${n('regConfirm')}.text(),
+        )
+        if ok:
+            QMessageBox.information(self, "Đăng ký", message)
+            self.back_to_login()
+        else:
+            QMessageBox.warning(self, "Đăng ký", message)
+
+    def back_to_login(self):
+        self.login_window.show()
+        self.close()
+
+
+class LoginWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        uic.loadUi(os.path.join(UI_DIR, "login.ui"), self)
+        self.auth = AuthService()
+        self.register_window = None
+        self.home_window = None
+        self.${n('btnLogin')}.clicked.connect(self.handle_login)
+        self.${n('btnToRegister')}.clicked.connect(self.open_register)
+
+    def open_register(self):
+        self.register_window = RegisterWindow(self, self.auth)
+        self.register_window.show()
+        self.hide()
+
+    def handle_login(self):
+        username = self.${n('loginUser')}.text().strip()
+        if self.auth.login(username, self.${n('loginPass')}.text()):
             self.home_window = HomeWindow(self, username)
             self.home_window.show()
             self.hide()
@@ -932,7 +1139,8 @@ function simRegister(user, pass, confirm, exists) {
  <h3>Đặc tả em đã chốt ở Tuần 1</h3>
  <div data-outhtml="w1specs"></div>
  <h3>Cách tạo mỗi file</h3>
- <ol><li>Mở Qt Designer như đã làm ở lớp, chọn mẫu <b>Main Window</b> cho mỗi form. Khi đó lớp sinh ra ở Tuần 3 mang tên <code>Ui_MainWindow</code>, và <code>main.py</code> mẫu dựa vào tên này.</li><li>Dựng đúng thành phần theo đặc tả ở trên, nhìn bản mẫu Uizard để bố trí.</li><li>Lưu thành <code>login.ui</code>, <code>register.ui</code>, <code>home.ui</code> trong cùng một thư mục.</li></ol>
+ <ol><li>Mở Qt Designer như đã làm ở lớp, chọn mẫu <b>Main Window</b> cho mỗi form. Khi sử dụng <code>uic.loadUi("gui/login.ui", self)</code> như khóa PTA (hoặc sinh mã bằng <code>pyuic6</code>), cấu trúc MainWindow sẽ khớp ngay với code Python ở Tuần 3.</li><li>Dựng đúng thành phần theo đặc tả ở trên, nhìn bản mẫu Uizard để bố trí.</li><li>Lưu thành <code>login.ui</code>, <code>register.ui</code>, <code>home.ui</code> trong cùng một thư mục (ví dụ <code>gui/</code> hoặc <code>ui/</code>).</li></ol>
+ <div class="callout"><strong>Phím tắt Layout &amp; Mẹo hiển thị (Windows vs macOS)</strong><ul><li><b>Windows</b>: Xếp ngang <code>Ctrl+H</code> · Xếp dọc <code>Ctrl+L</code> · Xem trước (Preview) <code>Ctrl+R</code> · Hoàn tác <code>Ctrl+Z</code>.</li><li><b>macOS</b>: <b>Không dùng <code>Cmd+H</code></b> (phím ẩn cửa sổ hệ thống) — hãy chuột phải → <i>Lay out</i> hoặc bấm biểu tượng Layout trên thanh công cụ; xem trước bằng <code>Option+Shift+R</code>.</li><li><b>Cửa sổ &amp; ảnh nét</b>: Đặt <code>geometry</code> cân đối (VD <code>950×655</code>), giới hạn <code>maximumSize</code> (VD <code>1100×720</code>), chuột phải <code>statusbar → Remove Status Bar</code>. Với ảnh/avatar, khóa <code>minimumSize = maximumSize</code> trước khi tích <code>scaledContents</code>.</li></ul></div>
  ${chkList('w2a', ['Mỗi form tạo từ mẫu <b>Main Window</b> và lưu đúng tên file.', 'Mỗi form dùng layout (<code>QVBoxLayout</code>, <code>QHBoxLayout</code>, <code>QGridLayout</code>), không đặt widget bằng kéo thả tự do.', 'Ô mật khẩu đặt <code>echoMode = Password</code>.', 'Xem trước (Form → Preview) không vỡ bố cục khi kéo to/nhỏ cửa sổ.'])}`;
   const w2assets = `<div class="callout"><strong>Tìm icon &amp; hình ảnh đồng bộ với bảng màu của em</strong>Ưu tiên icon nét gọn (PNG <code>24x24</code> hoặc <code>48x48</code> nền trong suốt). Với hình minh họa, <b>unDraw</b> cho nhập trực tiếp mã màu chủ đạo của em (<span data-outhtml="palText"></span>)!</div>
  <h3>1. Kho Icon miễn phí</h3>
@@ -950,7 +1158,12 @@ function simRegister(user, pass, confirm, exists) {
  <div class="meter"><span class="big" data-outhtml="namesNum">0</span><span>tên chưa hợp lệ</span></div>`;
   const w2c = `<p class="lead" style="margin-bottom:12px">StyleSheet mẫu bên dưới dùng đúng bảng màu em chốt ở Tuần 1 (đang dùng: <span data-outhtml="palText"></span>).</p>
  <p class="tiny">Dán vào thuộc tính <code>styleSheet</code> của cửa sổ chính (<code>MainWindow</code>) trong Qt Designer (Property Editor) cho cả 3 form, rồi kiểm tra lại trong Form → Preview để điều chỉnh chi tiết cho khớp bản mẫu.</p>
- ${codeBlock('qss', 'Sao chép StyleSheet')}
+ ${codeBlock('qss', 'Sao chép StyleSheet tổng thể')}
+ <h3>Thư viện 6 mẫu QSS theo từng khối giao diện (theo bài mẫu Qt Designer)</h3>
+ <p class="tiny">Bấm từng khối để lấy đúng đoạn QSS (nền kem, thanh điều hướng trái, header tìm kiếm phẳng, tiêu đề Win/Mac, nút danh mục QToolButton, thẻ Card QFrame) tự phối theo bảng màu của em:</p>
+ <div class="screen-tabs">${QSS_SNIPPETS.map((q, i) => `<button type="button" class="screen-tab${i ? '' : ' active'}" data-qss-tab="${q.id}">${esc(q.title)}</button>`).join('')}</div>
+ <div class="callout" id="qssSnippetMeta"></div>
+ ${codeBlock('qssSnippet', 'Sao chép đoạn QSS này')}
  <h3>Hỏi AI tinh chỉnh QSS (Quy tắc 4T)</h3>
  <p class="tiny">Nếu muốn bo góc card, đổi style bảng hoặc thanh cuộn, dùng prompt chuẩn bên dưới để AI không sinh nhầm selector làm hỏng màu hộp thoại.</p>
  ${codeBlock('aiPromptW2', 'Sao chép Prompt QSS cho AI')}
@@ -960,12 +1173,17 @@ function simRegister(user, pass, confirm, exists) {
   const w2d = `${chkList('w2d', ['Đã nộp <code>login.ui</code> hoàn chỉnh.', 'Đã nộp <code>register.ui</code> hoàn chỉnh.', 'Đã nộp <code>home.ui</code> hoàn chỉnh.'])}
  ${submitBox('tuan-2', 'Nộp bài Lab11 cuối buổi 2', 'Chọn 3 file .ui (login.ui, register.ui, home.ui) kèm ảnh chụp Preview rồi bấm Nộp.')}`;
 
-  const w3a = `<div class="callout"><strong>Mục tiêu tuần 3</strong>Chạy được luồng Đăng ký → Đăng nhập → Trang chủ → Đăng xuất, có lưu tài khoản. Các file đặt chung một thư mục:</div>
- <div class="codebox" style="max-height:none">du-an/\n├─ assets/                           (icons/, images/ từ tuần 2)\n├─ login.ui, register.ui, home.ui      (từ Qt Designer, tuần 2)\n├─ ui_login.py, ui_register.py, ui_home.py   (sinh bằng pyuic6, không sửa tay)\n├─ auth.py        (đăng ký, đăng nhập, lưu tài khoản)\n├─ main.py        (mở các form và nối nút bấm)\n└─ users.json     (tự tạo khi đăng ký, nếu chọn lưu file)</div>
- <h3>Chuyển file .ui thành mã Python</h3>
- ${codeBlock('cmd', 'Sao chép lệnh')}
- <div class="callout warn"><strong>Hai điều cần nhớ</strong>Chạy lại lệnh mỗi khi sửa file <code>.ui</code>, và không sửa tay file <code>ui_*.py</code> vì lần sinh sau sẽ ghi đè. Nguồn lệnh: <a href="https://www.pythonguis.com/tutorials/pyqt6-first-steps-qt-designer/" target="_blank" rel="noopener">Python GUIs · Qt Designer với PyQt6</a>.</div>
- ${chkList('w3a', ['Đã sinh đủ 3 file <code>ui_login.py</code>, <code>ui_register.py</code>, <code>ui_home.py</code>.', 'Có <code>main.py</code> và <code>auth.py</code> cùng thư mục với 3 file giao diện.', 'Chạy <code>python main.py</code> thấy form Đăng nhập hiện lên.', 'Nút sang Đăng ký và nút quay lại Đăng nhập hoạt động.'])}`;
+  const w3a = `<div class="callout"><strong>Mục tiêu tuần 3</strong>Chạy được luồng Đăng ký → Đăng nhập → Trang chủ → Đăng xuất, có lưu tài khoản. Các file đặt gọn theo cấu trúc thư mục:</div>
+ <div class="codebox" style="max-height:none">du-an/\n├─ assets/                     (icons/, images/ từ tuần 2)\n├─ gui/                        (chứa login.ui, register.ui, home.ui)\n├─ auth.py                     (đăng ký, đăng nhập, lưu tài khoản)\n├─ main.py                     (mở giao diện và nối nút bấm)\n└─ users.json                  (tự tạo khi đăng ký, nếu chọn lưu file)</div>
+ <h3>Nhắc nhanh kiến thức đã học ở khóa PTA (Mở &amp; Chuyển giao diện)</h3>
+ <div class="callout"><strong>3 điểm cốt lõi nhớ trước khi viết code</strong><ol><li><b>Mở giao diện</b>: Tạo class kế thừa <code>QMainWindow</code> và gọi <code>uic.loadUi("gui/login.ui", self)</code> — <b>bắt buộc có <code>, self</code></b> ở cuối (nếu thiếu <code>, self</code> cửa sổ mở ra sẽ trắng trơn).</li><li><b>Nối nút &amp; Chuyển giao diện</b>: Nối sự kiện bằng <code>self.btn_ten.clicked.connect(self.ten_ham)</code> (<b>không viết dấu <code>()</code></b> sau tên hàm). Khi chuyển màn hình, gọi <code>cua_so_moi.show()</code> rồi <code>self.close()</code> (hoặc <code>self.hide()</code>).</li><li><b>Đọc chữ &amp; Báo lỗi</b>: Đọc ô nhập bằng <code>self.txt_ten.text()</code> và bật hộp thoại thông báo bằng <code>QMessageBox</code>.</li></ol></div>
+ <p class="tiny">Code mẫu ôn bài đúng theo khung buổi 7 khóa PTA (có sẵn chú thích sửa lỗi thiếu <code>, self</code> ở lớp <code>Main</code>):</p>
+ ${codeBlock('ptaReviewPy', 'Sao chép code ôn bài PTA', 'main_pta_mau.py')}
+ <h3>Cách 2 (tùy chọn): Chuyển file .ui thành mã Python bằng pyuic6</h3>
+ <p class="tiny">Nếu em dùng <code>uic.loadUi</code> như khóa PTA ở mục trên thì có thể bỏ qua bước chạy lệnh <code>pyuic6</code> này.</p>
+ ${codeBlock('cmd', 'Sao chép lệnh pyuic6')}
+ <div class="callout warn"><strong>Hai điều cần nhớ nếu dùng pyuic6</strong>Chạy lại lệnh mỗi khi sửa file <code>.ui</code>, và không sửa tay file <code>ui_*.py</code> vì lần sinh sau sẽ ghi đè. Nguồn lệnh: <a href="https://www.pythonguis.com/tutorials/pyqt6-first-steps-qt-designer/" target="_blank" rel="noopener">Python GUIs · Qt Designer với PyQt6</a>.</div>
+ ${chkList('w3a', ['Đã chuẩn bị đủ 3 file <code>login.ui</code>, <code>register.ui</code>, <code>home.ui</code> (hoặc sinh <code>ui_*.py</code> nếu dùng Cách 2).', 'Có <code>main.py</code> và <code>auth.py</code> đúng vị trí trong thư mục dự án.', 'Chạy <code>python main.py</code> thấy form Đăng nhập hiện lên đầy đủ widget.', 'Nút sang Đăng ký và nút quay lại Đăng nhập hoạt động trơn tru.'])}`;
   const w3b = `<p class="lead" style="margin-bottom:12px">Tài khoản là các đối tượng <code>User</code> trong một danh sách; lớp <code>AuthService</code> tách riêng khỏi giao diện nên em dễ kiểm tra độc lập. Mật khẩu được băm trước khi lưu.</p>
  ${fld('storage', 'Cách lưu tài khoản', { sel: [['file', 'Lưu vào file users.json (khuyên dùng)'], ['mem', 'Chỉ trong bộ nhớ (mất khi tắt app)']] })}
  <div class="callout"><strong>Về cách lưu tài khoản</strong>Mặc định chương trình lưu tài khoản vào file <code>users.json</code> để lần sau mở lại vẫn đăng nhập được. Nếu lớp thực hành nhanh không cần lưu qua lần tắt app, có thể chọn phương án chỉ dùng bộ nhớ.</div>
@@ -976,16 +1194,22 @@ function simRegister(user, pass, confirm, exists) {
  <div class="grid3"><div class="field"><label for="simU">Tên đăng nhập</label><input id="simU" autocomplete="off"></div><div class="field"><label for="simP">Mật khẩu</label><input id="simP" type="password" autocomplete="off"></div><div class="field"><label for="simC">Nhập lại mật khẩu (khi đăng ký)</label><input id="simC" type="password" autocomplete="off"></div></div>
  <div class="actions"><button class="btn primary" type="button" id="simReg">Đăng ký</button><button class="btn outline" type="button" id="simLogin">Đăng nhập</button></div>
  <div class="callout" id="simOut" style="margin-top:12px" aria-live="polite">Kết quả sẽ hiện ở đây.</div>`;
-  const w3c = `<p class="lead" style="margin-bottom:12px">Mã tự đổi theo tên widget em đặt ở Tuần 2. Mỗi form là một lớp riêng; chuyển màn hình bằng cách hiện form mới rồi ẩn hoặc đóng form cũ. Lỗi hiện bằng <code>QMessageBox</code>.</p>
+  const w3c = `<p class="lead" style="margin-bottom:12px">Mã tự cập nhật theo đúng tên <code>objectName</code> em đặt ở Tuần 2 và nối sẵn <code>AuthService</code> từ <code>auth.py</code>. Mặc định ưu tiên cách <code>uic.loadUi</code> giống trên lớp PTA.</p>
+ <div class="screen-tabs"><button type="button" class="screen-tab active" data-main-mode="uic">Cách 1 (Khóa PTA): Dùng uic.loadUi</button><button type="button" class="screen-tab" data-main-mode="pyuic">Cách 2: Dùng file ui_*.py (pyuic6)</button></div>
+ <div class="callout" id="mainModeMeta"></div>
  <div class="callout warn" data-outhtml="mainWarn" style="display:none"></div>
- ${codeBlock('mainPy', 'Sao chép main.py', 'main.py')}
- <div class="callout"><strong>Thứ tự làm</strong>Chép <code>auth.py</code>, rồi <code>main.py</code>, chạy từng ca ở mục Kiểm thử.</div>`;
+ ${codeBlock('mainPyActive', 'Sao chép main.py', 'main.py')}
+ <div class="callout"><strong>Thứ tự làm</strong>Chép <code>auth.py</code>, rồi <code>main.py</code>, chạy thử từng ca ở mục <i>Kiểm thử &amp; Debug</i>.</div>`;
   const w3d = `<p class="lead" style="margin-bottom:12px">Tự chạy từng ca và đánh dấu khi kết quả đúng như mong đợi.</p>
  <div class="checklist">${TESTS.map((t, i) => chk('w3t' + (i + 1), `<b>${i + 1}. ${t[0]}</b><br>Mong đợi: ${t[1]}`)).join('')}</div>
- <h3>Bảng Debug 5 lỗi kinh điển</h3>
+ <h3>Bảng Debug các lỗi kinh điển (pyuic6 &amp; uic.loadUi)</h3>
  <div class="debug-list">${DEBUG_5.map(([sym, fix]) => `<div class="debug-item"><div><b>${esc(sym)}</b></div><div>${esc(fix)}</div></div>`).join('')}</div>
- <h3>Hỏi AI giải thích lỗi Traceback (không nhờ viết hộ toàn bộ)</h3>
+ <h3>Trợ lý AI hỗ trợ sửa lỗi khi em không biết sửa (Quy tắc 4T)</h3>
+ <div class="callout"><strong>Cách nhờ AI giúp mà vẫn hiểu bài (3 bước)</strong><ol><li>Copy dòng lỗi màu đỏ (Traceback) ở khung Terminal dán vào ô số 1.</li><li>Copy khoảng 10–20 dòng code chỗ em nghi bị lỗi dán vào ô số 2 (không bắt buộc).</li><li>Bấm <b>Sao chép Prompt hỏi AI sửa lỗi</b> rồi dán sang Gemini hoặc ChatGPT — AI sẽ chỉ đúng dòng lỗi và hướng dẫn tự sửa, không viết hộ cả bài.</li></ol></div>
+ ${fld('errTrace', '1. Dán thông báo lỗi (Traceback) từ Terminal', { area: 1, rows: 3, ph: "Ví dụ: AttributeError: 'LoginWindow' object has no attribute 'btnLogin'" })}
+ ${fld('errCode', '2. Dán đoạn code chỗ bị lỗi (10–20 dòng, tùy chọn)', { area: 1, rows: 4, ph: 'Dán hàm __init__ hoặc hàm xử lý nút đang bị lỗi vào đây...' })}
  ${codeBlock('aiPromptW3', 'Sao chép Prompt hỏi AI sửa lỗi')}
+ <div class="actions"><a class="btn outline small" href="https://gemini.google.com/" target="_blank" rel="noopener">Mở Gemini ↗</a><a class="btn outline small" href="https://chatgpt.com/" target="_blank" rel="noopener">Mở ChatGPT ↗</a></div>
  ${aiLogBox(3, 'Ghi lại lỗi em gặp và dòng code nào đã giúp sửa xong.')}
  ${fld('w3Notes', 'Ghi chú lỗi thêm và cách đã sửa', { area: 1 })}`;
   const w3e = `${chkList('w3d', ['Tài khoản đăng ký được lưu đúng cách đã chọn (nếu lưu file, mở lại chương trình vẫn đăng nhập được).', 'Chạy được 3 luồng: đăng ký, đăng nhập đúng, đăng nhập sai.', 'Đã qua cả 7 ca kiểm thử.', 'Em giải thích được từng đoạn code mình nộp.'])}
@@ -1040,7 +1264,7 @@ function simRegister(user, pass, confirm, exists) {
   $('mainArea').innerHTML = cloudBar +
     panel('tuan-1', '01 · Nộp: Lab10', 'Lên ý tưởng AI & Mẫu Uizard', 'Chốt ý tưởng, tên ứng dụng, bảng màu Hex, đặc tả 3 màn hình và hoàn thiện Project Brief cho cả 4 tuần.', 'Tuần 1', [['a', 'Ý tưởng & Đặc tả AI', w1a], ['b', 'Uizard & Bảng màu', w1b], ['c', 'Project Brief & Nộp Lab10', w1c]]) +
     panel('tuan-2', '02 · Nộp: Lab11', 'Thiết kế giao diện Qt Designer', 'Chuyển bản mẫu Uizard thành 3 form thực tế, chọn icon/ảnh, trang trí QSS và đặt objectName chuẩn.', 'Tuần 2', [['a', 'Từ Uizard sang Qt', w2a], ['b', 'Kho Icon & Hình ảnh', w2assets], ['c', 'Tên widget', w2b], ['d', 'QSS & Trợ lý AI', w2c], ['e', 'Nghiệm thu & Nộp Lab11', w2d]]) +
-    panel('tuan-3', '03 · Nộp: Lab12', 'Lập trình chức năng Python', 'Nối 3 form với logic: đăng ký, lưu tài khoản, đăng nhập và chuyển màn hình.', 'Tuần 3', [['a', 'Chuẩn bị', w3a], ['b', 'auth.py', w3b], ['c', 'main.py', w3c], ['d', 'Kiểm thử & Debug', w3d], ['e', 'Nghiệm thu & Nộp Lab12', w3e]]) +
+    panel('tuan-3', '03 · Nộp: Lab12', 'Lập trình chức năng Python', 'Ôn lại kiến thức uic.loadUi của khóa PTA và nối 3 form với logic: đăng ký, lưu tài khoản, đăng nhập và chuyển màn hình.', 'Tuần 3', [['a', 'Ôn bài PTA & Chuẩn bị', w3a], ['b', 'auth.py', w3b], ['c', 'main.py', w3c], ['d', 'Kiểm thử & Debug', w3d], ['e', 'Nghiệm thu & Nộp Lab12', w3e]]) +
     panel('tuan-4', '04 · Nộp: SPCK_Final', 'Kiểm thử & Thuyết trình', 'Kiểm thử chéo, hoàn thiện chức năng riêng theo mẫu mini và chuẩn bị demo trước lớp.', 'Tuần 4', [['a', 'Kiểm thử chéo', w4a], ['b', 'Chức năng riêng & Mẫu mini', w4b], ['c', 'Thuyết trình', w4c], ['d', 'Tự chấm', w4d], ['e', 'Nghiệm thu & Nộp SPCK', w4e]]) +
     dossier;
 
@@ -1053,6 +1277,8 @@ function simRegister(user, pass, confirm, exists) {
   /* ---------- Điều hướng ---------- */
   let current = 'tuan-1';
   let activeMini = MINI_TEMPLATES[0].id;
+  let activeQssTab = QSS_SNIPPETS[0].id;
+  let activeMainMode = 'uic';
   function scrollPanelIntoViewIfAbove(slug) {
     const panelEl = document.getElementById('p-' + slug);
     if (!panelEl || typeof panelEl.getBoundingClientRect !== 'function') return;
@@ -1094,6 +1320,20 @@ function simRegister(user, pass, confirm, exists) {
     if (mt) {
       activeMini = mt.dataset.miniTab;
       document.querySelectorAll('[data-mini-tab]').forEach((b) => b.classList.toggle('active', b.dataset.miniTab === activeMini));
+      refresh();
+      return;
+    }
+    const qt = ev.target.closest('[data-qss-tab]');
+    if (qt) {
+      activeQssTab = qt.dataset.qssTab;
+      document.querySelectorAll('[data-qss-tab]').forEach((b) => b.classList.toggle('active', b.dataset.qssTab === activeQssTab));
+      refresh();
+      return;
+    }
+    const mmb = ev.target.closest('[data-main-mode]');
+    if (mmb) {
+      activeMainMode = mmb.dataset.mainMode;
+      document.querySelectorAll('[data-main-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mainMode === activeMainMode));
       refresh();
     }
   });
@@ -1699,9 +1939,13 @@ function simRegister(user, pass, confirm, exists) {
     briefHtml: () => buildBriefHtml(OUTH.briefSheet()),
     backupJson: () => JSON.stringify(S, null, 2),
     qss: buildQss,
+    qssSnippet: () => buildQssSnippet(activeQssTab),
     cmd: buildCmd,
     authPy: buildAuthPy,
+    ptaReviewPy: buildPtaReviewPy,
     mainPy: buildMainPy,
+    mainUicPy: buildMainUicPy,
+    mainPyActive: () => (activeMainMode === 'pyuic' ? buildMainPy() : buildMainUicPy()),
     dossier: buildDossier
   };
   let DL = null;
@@ -1840,6 +2084,17 @@ function simRegister(user, pass, confirm, exists) {
     if (mm) {
       const m = MINI_TEMPLATES.find((x) => x.id === activeMini) || MINI_TEMPLATES[0];
       mm.innerHTML = `<strong>${esc(m.title)}</strong>${esc(m.desc)}<br><span class="tiny">Widget cần có trên <code>home.ui</code>: <code>${esc(m.widgets)}</code></span>`;
+    }
+    const qm = $('qssSnippetMeta');
+    if (qm) {
+      const q = QSS_SNIPPETS.find((x) => x.id === activeQssTab) || QSS_SNIPPETS[0];
+      qm.innerHTML = `<strong>Đối tượng áp dụng: <code>${esc(q.target)}</code></strong>${esc(q.tip)}`;
+    }
+    const mdm = $('mainModeMeta');
+    if (mdm) {
+      mdm.innerHTML = activeMainMode === 'pyuic'
+        ? '<strong>Cách 2: Dùng <code>pyuic6</code> sinh <code>ui_*.py</code></strong>Gọi thuộc tính qua <code>self.ui.&lt;ten_widget&gt;</code>; mỗi khi sửa <code>.ui</code> nhớ chạy lại lệnh <code>pyuic6</code>.'
+        : '<strong>Cách 1 (Khóa PTA): Nạp trực tiếp <code>.ui</code> bằng <code>uic.loadUi(..., self)</code></strong>Không cần chạy <code>pyuic6</code>; gọi thẳng widget qua <code>self.&lt;ten_widget&gt;</code> và kiểm tra đúng đường dẫn thư mục chứa file <code>.ui</code> (mặc định <code>gui/</code>).';
     }
     document.querySelectorAll('[data-out]').forEach((el) => { const f = OUT[el.dataset.out]; if (f) el.textContent = f(); });
     document.querySelectorAll('[data-outhtml]').forEach((el) => {

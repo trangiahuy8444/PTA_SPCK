@@ -1,15 +1,16 @@
-# Hướng dẫn triển khai & cập nhật Google Apps Script (v3.0)
+# Hướng dẫn triển khai & cập nhật Google Apps Script (v3.1)
 
-Hệ thống chạy trực tiếp trên Google Drive của thầy qua **Google Apps Script**:
-- Học sinh chỉ cần **nhập Họ và tên** trên web là mở lại được toàn bộ nội dung đã làm và các tệp bài làm đã nộp.
-- Mọi lần lưu hoặc nộp bài đều tạo **phiên bản mới (`v001`, `v002`, ...)** trong `versions/` và `Tuan_X_.../vNNN_.../` — **không bao giờ ghi đè phiên bản cũ**.
+Hệ thống chạy trực tiếp trên Google Drive của giáo viên qua **Google Apps Script**:
+- Học sinh chỉ cần **nhập Họ và tên** trên web (tự động chuẩn hóa viết thường, không dấu). Nếu chưa có hồ sơ thì hệ thống tự tạo mới; nếu đã có thì mở toàn bộ bài làm và tệp đã nộp ngay trên web với nút **Tải về**.
+- **Không lộ đường dẫn Drive** cho học sinh.
+- Mọi lần lưu hoặc nộp bài đều tạo **phiên bản mới (`v001`, `v002`, ...)** — **không bao giờ ghi đè phiên bản cũ**.
 
 ---
 
 ## Nếu bạn ĐÃ tạo project & chạy `setupProject()` trước đó (chỉ cập nhật code mới)
 1. Mở tab **Apps Script Editor** hiện tại (`PTA_SPCK_Drive_API`).
 2. Xóa toàn bộ code cũ trong `Code.gs`, dán toàn bộ nội dung mới từ [Code.gs](./Code.gs) vào và bấm **Lưu (`Cmd/Ctrl + S`)**.
-3. **Không cần chạy lại `setupProject()`** (thư mục `PTA_SPCK_Submissions` và file `Tracking_Master` cũ được giữ nguyên; hai tab `HoSoHocSinh` và `LichSuPhienBan` sẽ tự động tạo thêm khi có học sinh đầu tiên lưu bài).
+3. **Không cần chạy lại `setupProject()`** (thư mục `PTA_SPCK_Submissions` và file `Tracking_Master` cũ được giữ nguyên).
 4. Để **giữ nguyên Web App URL cũ** đang gắn trong web:
    - Bấm **Triển khai (Deploy)** → **Quản lý các mục triển khai (Manage deployments)**.
    - Bấm biểu tượng **Chỉnh sửa (cây bút chì)** ở mục triển khai hiện có.

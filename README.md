@@ -1,6 +1,6 @@
 # App Producer Advanced · Dự án cá nhân 4 tuần
 
-Web hỗ trợ học sinh làm dự án cá nhân trong 4 tuần (Qt Designer + Python PyQt6), kết nối trực tiếp Google Drive & Google Sheets để lưu hồ sơ theo tên học sinh theo từng phiên bản bất biến (không ghi đè).
+Web hỗ trợ học sinh làm dự án cá nhân trong 4 tuần (Qt Designer + Python PyQt6), kết nối Google Apps Script để tự động tạo và lưu hồ sơ theo tên học sinh (chuẩn hóa viết thường, không dấu) theo từng phiên bản bất biến (không ghi đè, không lộ link Drive).
 
 | Tuần | Nội dung | Nộp |
 |---|---|---|

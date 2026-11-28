@@ -1,8 +1,9 @@
 /**
- * PTA_SPCK Google Drive & Google Sheets Backend v3.0 (Google Apps Script)
- * - Tra cứu hồ sơ & toàn bộ file bài làm chỉ bằng Họ và tên học sinh.
+ * PTA_SPCK Google Drive & Google Sheets Backend v3.1 (Google Apps Script)
+ * - Chuẩn hóa tên học sinh về chữ thường không dấu (vd: "Nguyễn Minh Khang" -> "nguyen minh khang").
+ * - Tự tạo mới hồ sơ khi tên chưa tồn tại trong cơ sở dữ liệu.
  * - Lưu phiên bản bất biến (append-only): KHÔNG BAO GIỜ ghi đè dữ liệu hay file cũ.
- * - Giữ nguyên ROOT_FOLDER_ID & SHEET_ID đã tạo từ setupProject().
+ * - Không trả về đường dẫn Drive cho phía học sinh (chỉ trả metadata & nội dung file qua proxy).
  */
 
 var ROOT_FOLDER_NAME = 'PTA_SPCK_Submissions';
@@ -62,7 +63,7 @@ function setupProject() {
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? String(e.parameter.action) : 'ping';
   if (action === 'ping') {
-    return jsonOut_({ ok: true, service: 'PTA_SPCK_Drive_API', version: '3.0' });
+    return jsonOut_({ ok: true, service: 'PTA_SPCK_Drive_API', version: '3.1' });
   }
   return jsonOut_({ ok: false, error: 'Unsupported GET action' });
 }
@@ -91,10 +92,14 @@ function handleListStudents_() {
   var ss = SpreadsheetApp.openById(cfg.sheetId);
   var sheets = ensureSheets_(ss);
   var rows = sheets.hoSo.getDataRange().getValues();
+  var seen = {};
   var names = [];
   for (var i = 1; i < rows.length; i++) {
-    var nm = String(rows[i][1] || '').trim();
-    if (nm) names.push(nm);
+    var nm = normalizeStudentName_(rows[i][1] || '');
+    if (nm && !seen[nm]) {
+      seen[nm] = true;
+      names.push(nm);
+    }
   }
   return { ok: true, students: names };
 }
@@ -107,11 +112,61 @@ function handleLoadStudent_(data) {
   var found = findStudentRow_(sheets.hoSo, info.studentKey);
   var studentFolder = findExistingStudentFolder_(cfg.rootFolder, info.studentKey);
 
+  // Tự động tạo hồ sơ mới nếu chưa có trong cơ sở dữ liệu
   if (!found && !studentFolder) {
-    return { ok: true, isNew: true, studentKey: info.studentKey, studentName: info.studentName };
+    var lock = LockService.getScriptLock();
+    lock.waitLock(15000);
+    try {
+      found = findStudentRow_(sheets.hoSo, info.studentKey);
+      studentFolder = findExistingStudentFolder_(cfg.rootFolder, info.studentKey);
+      if (!found && !studentFolder) {
+        studentFolder = getOrCreateStudentFolder_(cfg.rootFolder, info.studentKey);
+        var versionsFolder = findOrCreateFolder_(studentFolder, 'versions');
+        var verTag = nextVersionTag_(versionsFolder);
+        var now = new Date();
+        var stamp = formatStamp_(now);
+        var nowIso = formatNow_(now);
+        var initState = (data.initialState && typeof data.initialState === 'object') ? data.initialState : {};
+        initState.f = initState.f || {};
+        initState.f.studentName = info.studentName;
+
+        var initFileName = verTag + '_' + stamp + '_khoi-tao.json';
+        var initFile = versionsFolder.createFile(initFileName, JSON.stringify(initState, null, 2), MimeType.PLAIN_TEXT);
+
+        upsertStudentRow_(sheets.hoSo, null, {
+          studentKey: info.studentKey,
+          studentName: info.studentName,
+          appName: String((initState.f && initState.f.appName) || '').trim(),
+          latestVersion: verTag,
+          latestStateFileId: initFile.getId(),
+          driveFolderLink: studentFolder.getUrl(),
+          updatedAt: nowIso
+        });
+
+        sheets.history.appendRow([
+          verTag, nowIso, info.studentKey, info.studentName,
+          'khoi-tao', 'Tự tạo hồ sơ mới', 0, initFileName, initFile.getId(), '', initFile.getUrl()
+        ]);
+
+        return {
+          ok: true,
+          created: true,
+          studentKey: info.studentKey,
+          studentName: info.studentName,
+          latestVersion: verTag,
+          updatedAt: nowIso,
+          state: initState,
+          versions: listVersionFiles_(studentFolder),
+          filesByWeek: listFilesByWeek_(studentFolder)
+        };
+      }
+    } finally {
+      lock.releaseLock();
+    }
   }
+
   if (!studentFolder) {
-    studentFolder = getOrCreateStudentFolder_(cfg.rootFolder, info.studentKey, info.studentName);
+    studentFolder = getOrCreateStudentFolder_(cfg.rootFolder, info.studentKey);
   }
 
   var versions = listVersionFiles_(studentFolder);
@@ -128,12 +183,11 @@ function handleLoadStudent_(data) {
 
   return {
     ok: true,
-    isNew: false,
+    created: false,
     studentKey: info.studentKey,
-    studentName: (found && found.name) || info.studentName,
+    studentName: info.studentName,
     latestVersion: (found && found.latestVersion) || (versions.length ? versions[0].version : ''),
     updatedAt: (found && found.updatedAt) || '',
-    folderUrl: studentFolder.getUrl(),
     state: state,
     versions: versions,
     filesByWeek: filesByWeek
@@ -166,14 +220,17 @@ function handleSaveVersion_(data) {
   var lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
-    var studentFolder = getOrCreateStudentFolder_(cfg.rootFolder, info.studentKey, info.studentName);
+    var studentFolder = getOrCreateStudentFolder_(cfg.rootFolder, info.studentKey);
     var versionsFolder = findOrCreateFolder_(studentFolder, 'versions');
     var verTag = nextVersionTag_(versionsFolder);
     var now = new Date();
     var stamp = formatStamp_(now);
     var nowIso = formatNow_(now);
     var stateFileName = verTag + '_' + stamp + '_nhap.json';
-    var stateFile = versionsFolder.createFile(stateFileName, JSON.stringify(data.state || {}, null, 2), MimeType.PLAIN_TEXT);
+    var statePayload = data.state || {};
+    statePayload.f = statePayload.f || {};
+    statePayload.f.studentName = info.studentName;
+    var stateFile = versionsFolder.createFile(stateFileName, JSON.stringify(statePayload, null, 2), MimeType.PLAIN_TEXT);
 
     var found = findStudentRow_(sheets.hoSo, info.studentKey);
     upsertStudentRow_(sheets.hoSo, found, {
@@ -182,7 +239,7 @@ function handleSaveVersion_(data) {
       appName: String(data.appName || '').trim(),
       latestVersion: verTag,
       latestStateFileId: stateFile.getId(),
-      folderUrl: studentFolder.getUrl(),
+      driveFolderLink: studentFolder.getUrl(),
       updatedAt: nowIso
     });
 
@@ -194,8 +251,8 @@ function handleSaveVersion_(data) {
     return {
       ok: true,
       version: verTag,
+      studentName: info.studentName,
       savedAt: nowIso,
-      folderUrl: studentFolder.getUrl(),
       versions: listVersionFiles_(studentFolder),
       filesByWeek: listFilesByWeek_(studentFolder)
     };
@@ -217,7 +274,7 @@ function handleSubmitWeek_(data) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var studentFolder = getOrCreateStudentFolder_(cfg.rootFolder, info.studentKey, info.studentName);
+    var studentFolder = getOrCreateStudentFolder_(cfg.rootFolder, info.studentKey);
     var versionsFolder = findOrCreateFolder_(studentFolder, 'versions');
     var verTag = nextVersionTag_(versionsFolder);
     var now = new Date();
@@ -225,7 +282,10 @@ function handleSubmitWeek_(data) {
     var nowIso = formatNow_(now);
 
     var stateFileName = verTag + '_' + stamp + '_' + target + '.json';
-    var stateFile = versionsFolder.createFile(stateFileName, JSON.stringify(data.state || {}, null, 2), MimeType.PLAIN_TEXT);
+    var statePayload = data.state || {};
+    statePayload.f = statePayload.f || {};
+    statePayload.f.studentName = info.studentName;
+    var stateFile = versionsFolder.createFile(stateFileName, JSON.stringify(statePayload, null, 2), MimeType.PLAIN_TEXT);
 
     var weekFolder = findOrCreateFolder_(studentFolder, spec.dir);
     var verFolder = weekFolder.createFolder(verTag + '_' + stamp);
@@ -254,7 +314,7 @@ function handleSubmitWeek_(data) {
       appName: String(data.appName || '').trim(),
       latestVersion: verTag,
       latestStateFileId: stateFile.getId(),
-      folderUrl: studentFolder.getUrl(),
+      driveFolderLink: studentFolder.getUrl(),
       updatedAt: nowIso
     });
     sheets.hoSo.getRange(rowIndex, spec.col).setValue(verTag + ' (' + nowIso + ')');
@@ -268,10 +328,10 @@ function handleSubmitWeek_(data) {
     return {
       ok: true,
       version: verTag,
+      studentName: info.studentName,
       status: 'Đã lưu ' + verTag,
       submittedAt: nowIso,
       filesCount: fileUrls.length,
-      folderUrl: verFolder.getUrl(),
       versions: listVersionFiles_(studentFolder),
       filesByWeek: listFilesByWeek_(studentFolder)
     };
@@ -335,9 +395,21 @@ function ensureTab_(ss, name, headers) {
   return sh;
 }
 
+function normalizeStudentName_(rawName) {
+  return String(rawName || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 function parseStudentName_(rawName) {
-  var studentName = String(rawName || '').trim().replace(/\s+/g, ' ');
-  var key = studentSlug_(studentName);
+  var studentName = normalizeStudentName_(rawName);
+  var key = studentName.replace(/\s+/g, '-');
   if (!studentName || studentName.length < 2 || !key) {
     throw new Error('Hãy nhập Họ và tên đầy đủ của em (tối thiểu 2 ký tự).');
   }
@@ -345,15 +417,7 @@ function parseStudentName_(rawName) {
 }
 
 function studentSlug_(s) {
-  return String(s || '')
-    .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return normalizeStudentName_(s).replace(/\s+/g, '-');
 }
 
 function sanitizePart_(s, keepDot) {
@@ -378,10 +442,10 @@ function findExistingStudentFolder_(rootFolder, studentKey) {
   return null;
 }
 
-function getOrCreateStudentFolder_(rootFolder, studentKey, studentName) {
+function getOrCreateStudentFolder_(rootFolder, studentKey) {
   var existing = findExistingStudentFolder_(rootFolder, studentKey);
   if (existing) return existing;
-  return rootFolder.createFolder(studentKey + '_' + sanitizePart_(studentName, false));
+  return rootFolder.createFolder(studentKey);
 }
 
 function nextVersionTag_(versionsFolder) {
@@ -412,8 +476,7 @@ function listVersionFiles_(studentFolder) {
       fileName: nm,
       version: m ? m[1] : nm,
       tag: m ? m[3] : 'saved',
-      savedAt: formatNow_(f.getDateCreated()),
-      url: f.getUrl()
+      savedAt: formatNow_(f.getDateCreated())
     });
   }
   out.sort(function (a, b) {
@@ -433,8 +496,7 @@ function listFilesByWeek_(studentFolder) {
 
     var directFiles = wkFolder.getFiles();
     while (directFiles.hasNext()) {
-      var df = directFiles.next();
-      out[wk].push(fileMeta_(df, 'gốc'));
+      out[wk].push(fileMeta_(directFiles.next(), 'gốc'));
     }
     var subFolders = wkFolder.getFolders();
     while (subFolders.hasNext()) {
@@ -459,8 +521,7 @@ function fileMeta_(f, versionLabel) {
     name: f.getName(),
     size: f.getSize(),
     mimeType: f.getMimeType(),
-    uploadedAt: formatNow_(f.getDateCreated()),
-    viewUrl: f.getUrl()
+    uploadedAt: formatNow_(f.getDateCreated())
   };
 }
 
@@ -483,7 +544,7 @@ function isDescendantOf_(file, ancestorFolder) {
 function findStudentRow_(sheet, studentKey) {
   var vals = sheet.getDataRange().getValues();
   for (var i = 1; i < vals.length; i++) {
-    if (String(vals[i][0] || '') === studentKey) {
+    if (studentSlug_(vals[i][0]) === studentKey || studentSlug_(vals[i][1]) === studentKey) {
       return {
         row: i + 1,
         name: String(vals[i][1] || ''),
@@ -499,14 +560,14 @@ function findStudentRow_(sheet, studentKey) {
 function upsertStudentRow_(sheet, found, info) {
   if (found) {
     sheet.getRange(found.row, 2, 1, 5).setValues([[
-      info.studentName, info.appName, info.latestVersion, info.latestStateFileId, info.folderUrl
+      info.studentName, info.appName, info.latestVersion, info.latestStateFileId, info.driveFolderLink
     ]]);
     sheet.getRange(found.row, 11).setValue(info.updatedAt);
     return found.row;
   }
   sheet.appendRow([
     info.studentKey, info.studentName, info.appName, info.latestVersion,
-    info.latestStateFileId, info.folderUrl, '', '', '', '', info.updatedAt
+    info.latestStateFileId, info.driveFolderLink, '', '', '', '', info.updatedAt
   ]);
   return sheet.getLastRow();
 }

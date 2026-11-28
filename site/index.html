@@ -566,7 +566,7 @@ function def() {
     w1Widgets: [],
     mockups: { login: '', register: '', home: '' },
     bugs: [{ who: '', what: '', fixed: false }],
-    cloud: { apiUrl: DEFAULT_CLOUD_API, lastSync: '', latestVersion: '', folderUrl: '' },
+    cloud: { apiUrl: DEFAULT_CLOUD_API, lastSync: '', latestVersion: '' },
     versions: [],
     filesByWeek: { 'tuan-1': [], 'tuan-2': [], 'tuan-3': [], 'tuan-4': [] },
     submissions: {}
@@ -603,12 +603,22 @@ function btnTextColor(hex) {
 }
 const storageMode = () => (S.f.storage === 'mem' ? 'mem' : 'file');
 
+function normalizeStudentName(name) {
+  return String(name || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
 function studentKeyFromName(name) {
-  const raw = String(name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return raw;
+  return normalizeStudentName(name).replace(/\s+/g, '-');
 }
 function validateStudentName(name) {
-  const clean = String(name || '').trim().replace(/\s+/g, ' ');
+  const clean = normalizeStudentName(name);
   if (clean.length < 2 || !studentKeyFromName(clean)) {
     return 'Hãy nhập Họ và tên đầy đủ của em (tối thiểu 2 ký tự).';
   }
@@ -624,7 +634,7 @@ function buildSubmitPayload(target, opts) {
   opts = opts || {};
   const wk = Number(String(target || '').replace(/\D/g, '')) || 1;
   const aiText = `Hỏi AI: ${val('aiAsk' + wk) || EMPTY} | Tự sửa: ${val('aiEdit' + wk) || EMPTY}`;
-  const studentName = String(opts.studentName || val('studentName') || '').trim().replace(/\s+/g, ' ');
+  const studentName = normalizeStudentName(opts.studentName || val('studentName') || '');
   return {
     action: 'submit_week',
     studentName,
@@ -1009,10 +1019,10 @@ function simRegister(user, pass, confirm, exists) {
   }
   function submitBox(target, title, hint, opts) {
     opts = opts || {};
-    const linkField = opts.withLink ? fld('link_' + target, 'Link Slide / Video Demo dự phòng (Google Drive hoặc YouTube Unlisted)', { ph: 'https://drive.google.com/...' }) : '';
+    const linkField = opts.withLink ? fld('link_' + target, 'Link Slide / Video Demo dự phòng (nếu có)', { ph: 'https://...' }) : '';
     return `<div class="submit-box no-print"><h3>${title}</h3><p class="tiny">${hint} Mỗi lần nộp sẽ tạo một <b>phiên bản mới</b>, giữ nguyên toàn bộ các bản cũ.</p>` +
       `${linkField}<div class="actions"><label class="btn outline small file-label">Chọn tệp đính kèm<input type="file" multiple data-sub-files="${target}" hidden></label>` +
-      `<button class="btn primary small" type="button" data-submit-target="${target}">Nộp phiên bản mới lên Drive</button></div>` +
+      `<button class="btn primary small" type="button" data-submit-target="${target}">Nộp phiên bản mới</button></div>` +
       `<div class="tiny" data-sub-picked="${target}" style="margin-top:6px">Chưa chọn tệp nào (tối đa 10 MB/lần nộp).</div>` +
       `<div data-outhtml="sub_${target}" style="margin-top:8px"></div>` +
       `<div data-outhtml="files_${target}" style="margin-top:10px"></div></div>`;
@@ -1035,10 +1045,10 @@ function simRegister(user, pass, confirm, exists) {
   }
 
   const cloudBar = `<section class="cloud-bar no-print" id="cloudBar">
- <div class="cloud-top"><div><b>Hồ sơ cá nhân trên Google Drive</b> <span class="tiny">Chỉ cần nhập Họ và tên để tải đầy đủ nội dung &amp; tệp bài làm. Mọi lần lưu đều tạo phiên bản mới, không ghi đè bản cũ.</span></div><div id="cloudStatus"><span class="pill muted">Chưa mở hồ sơ Drive</span></div></div>
+ <div class="cloud-top"><div><b>Hồ sơ cá nhân của em</b> <span class="tiny">Nhập Họ và tên (hệ thống tự chuẩn hóa viết thường không dấu). Nếu chưa có hồ sơ sẽ tự tạo mới; nếu đã có sẽ tải toàn bộ bài làm &amp; tệp về web.</span></div><div id="cloudStatus"><span class="pill muted">Chưa mở hồ sơ</span></div></div>
  <div class="cloud-grid">
-  <div class="field"><label for="cloudStudentName">Họ và tên học sinh</label><input id="cloudStudentName" list="studentList" placeholder="Nhập họ và tên đầy đủ (VD: Nguyễn Minh Khang)" autocomplete="off"><datalist id="studentList"></datalist></div>
-  <div class="actions" style="margin:0"><button class="btn primary small" type="button" id="btnCloudLoad">Mở hồ sơ của em</button><button class="btn outline small" type="button" id="btnCloudSave">Lưu phiên bản mới</button></div>
+  <div class="field"><label for="cloudStudentName">Họ và tên học sinh</label><input id="cloudStudentName" list="studentList" placeholder="Nhập họ và tên đầy đủ (VD: nguyen minh khang)" autocomplete="off"><datalist id="studentList"></datalist></div>
+  <div class="actions" style="margin:0"><button class="btn primary small" type="button" id="btnCloudLoad">Mở / Tạo hồ sơ</button><button class="btn outline small" type="button" id="btnCloudSave">Lưu phiên bản mới</button></div>
  </div>
 </section>`;
 
@@ -1096,7 +1106,7 @@ function simRegister(user, pass, confirm, exists) {
  </div>
  <div data-outhtml="briefSheet"></div>
  ${aiLogBox(1, 'Ghi lại những gì em chọn từ gợi ý của AI ở Tuần 1.')}
- ${submitBox('tuan-1', 'Nộp bài Lab10 cuối buổi 1 lên Google Drive', 'Hệ thống lưu phiên bản mới kèm Project Brief, Nhật ký AI và 3 ảnh Uizard (hoặc tệp em chọn thêm).')}
+ ${submitBox('tuan-1', 'Nộp bài Lab10 cuối buổi 1', 'Hệ thống lưu phiên bản mới kèm Project Brief, Nhật ký AI và 3 ảnh Uizard (hoặc tệp em chọn thêm).')}
  <div class="card no-print" style="margin-top:18px;background:#fafbfe">
   <h3>Sao lưu cục bộ (dự phòng khi chưa có mạng)</h3>
   <div class="actions">
@@ -1136,7 +1146,7 @@ function simRegister(user, pass, confirm, exists) {
  ${chkList('w2s', ['Đã áp StyleSheet cho cả 3 form.', 'Màu và chữ nhất quán giữa 3 form.', 'Giao diện giống bản mẫu Uizard ở mức hợp lý.'])}
  ${fld('w2Notes', 'Điểm khác bản Uizard và lý do', { area: 1 })}`;
   const w2d = `${chkList('w2d', ['Đã nộp <code>login.ui</code> hoàn chỉnh.', 'Đã nộp <code>register.ui</code> hoàn chỉnh.', 'Đã nộp <code>home.ui</code> hoàn chỉnh.'])}
- ${submitBox('tuan-2', 'Nộp bài Lab11 cuối buổi 2 lên Google Drive', 'Chọn 3 file .ui (login.ui, register.ui, home.ui) kèm ảnh chụp Preview rồi bấm Nộp.')}`;
+ ${submitBox('tuan-2', 'Nộp bài Lab11 cuối buổi 2', 'Chọn 3 file .ui (login.ui, register.ui, home.ui) kèm ảnh chụp Preview rồi bấm Nộp.')}`;
 
   const w3a = `<div class="callout"><strong>Mục tiêu tuần 3</strong>Chạy được luồng Đăng ký → Đăng nhập → Trang chủ → Đăng xuất, có lưu tài khoản. Các file đặt chung một thư mục:</div>
  <div class="codebox" style="max-height:none">du-an/\n├─ assets/                           (icons/, images/ từ tuần 2)\n├─ login.ui, register.ui, home.ui      (từ Qt Designer, tuần 2)\n├─ ui_login.py, ui_register.py, ui_home.py   (sinh bằng pyuic6, không sửa tay)\n├─ auth.py        (đăng ký, đăng nhập, lưu tài khoản)\n├─ main.py        (mở các form và nối nút bấm)\n└─ users.json     (tự tạo khi đăng ký, nếu chọn lưu file)</div>
@@ -1167,7 +1177,7 @@ function simRegister(user, pass, confirm, exists) {
  ${aiLogBox(3, 'Ghi lại lỗi em gặp và dòng code nào đã giúp sửa xong.')}
  ${fld('w3Notes', 'Ghi chú lỗi thêm và cách đã sửa', { area: 1 })}`;
   const w3e = `${chkList('w3d', ['Tài khoản đăng ký được lưu đúng cách đã chọn (nếu lưu file, mở lại chương trình vẫn đăng nhập được).', 'Chạy được 3 luồng: đăng ký, đăng nhập đúng, đăng nhập sai.', 'Đã qua cả 7 ca kiểm thử.', 'Em giải thích được từng đoạn code mình nộp.'])}
- ${submitBox('tuan-3', 'Nộp bài Lab12 cuối buổi 3 lên Google Drive', 'Chọn các file .py (main.py, auth.py, ui_*.py — không nộp users.json chứa dữ liệu thật) và ảnh chụp 3 luồng chạy.')}`;
+ ${submitBox('tuan-3', 'Nộp bài Lab12 cuối buổi 3', 'Chọn các file .py (main.py, auth.py, ui_*.py — không nộp users.json chứa dữ liệu thật) và ảnh chụp 3 luồng chạy.')}`;
 
   const w4a = `<p class="lead" style="margin-bottom:12px">Đổi máy với một bạn. Bạn dùng thử khi không được hướng dẫn; em ghi lại lỗi bạn gặp rồi sửa.</p>
  <div class="rows" id="bugRows"></div><div class="actions"><button class="btn outline small" type="button" id="addBug">Thêm lỗi</button></div>`;
@@ -1195,10 +1205,10 @@ function simRegister(user, pass, confirm, exists) {
  <div class="meter"><span class="big" data-outhtml="scoreTotal">0</span><span>/ 100 điểm tự chấm</span></div>`;
   const w4e = `${chkList('w4d', ['Đã đổi máy kiểm thử chéo với một bạn và sửa các lỗi đã ghi.', 'Sản phẩm có ít nhất 1 chức năng riêng chạy được.', 'Đã tập thuyết trình và demo trực tiếp.', 'Em giải thích được từng đoạn code mình nộp.'])}
  ${fld('w4Hard', 'Điều khó nhất em gặp', { area: 1 })}${fld('w4Learn', 'Điều em học được', { area: 1 })}${fld('w4Next', 'Em sẽ làm gì tiếp với ứng dụng này', { area: 1 })}
- ${submitBox('tuan-4', 'Nộp bài SPCK_Final lên Google Drive', 'Đính kèm mã nguồn (.zip hoặc các file .py/.ui), slide thuyết trình và dán link video demo dự phòng.', { withLink: true })}`;
+ ${submitBox('tuan-4', 'Nộp bài SPCK_Final cuối khóa', 'Đính kèm mã nguồn (.zip hoặc các file .py/.ui), slide thuyết trình và dán link video demo dự phòng.', { withLink: true })}`;
 
   const dossier = `<section class="panel" id="p-ho-so" data-slug="ho-so">
- ${head('HS · Hồ sơ', 'Hồ sơ dự án cá nhân', 'Xem toàn bộ nội dung, kho file bài làm đã nộp trên Drive và lịch sử các phiên bản của em.', 'Cuối khóa')}
+ ${head('HS · Hồ sơ', 'Hồ sơ dự án cá nhân', 'Xem toàn bộ nội dung, các tệp bài làm đã nộp và lịch sử các phiên bản của em.', 'Cuối khóa')}
  <div data-outhtml="weekBars"></div>
  <div class="actions">
   <button class="btn primary" type="button" data-copy="dossier">Sao chép hồ sơ</button>
@@ -1206,7 +1216,7 @@ function simRegister(user, pass, confirm, exists) {
   <button class="btn outline" type="button" data-dl="backupJson" data-fn="du-an-pta-{name}.json">Sao lưu dự án (.json)</button>
   <label class="btn outline file-label">Khôi phục (.json)<input type="file" id="importBackupHS" data-import-backup="1" accept=".json,application/json" hidden></label>
  </div>
- <h3>Kho file bài làm đã nộp trên Drive</h3>
+ <h3>Kho file bài làm đã nộp</h3>
  <div data-outhtml="allFiles"></div>
  <h3>Lịch sử các phiên bản đã lưu (không ghi đè)</h3>
  <div data-outhtml="versionHistory"></div>
@@ -1266,11 +1276,10 @@ function simRegister(user, pass, confirm, exists) {
     if (!el) return;
     const c = S.cloud || {};
     const totalFiles = ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4'].reduce((s, k) => s + ((S.filesByWeek && S.filesByWeek[k]) ? S.filesByWeek[k].length : 0), 0);
-    const link = c.folderUrl ? ` <a href="${esc(c.folderUrl)}" target="_blank" rel="noopener">Mở Drive ↗</a>` : '';
     if (c.latestVersion || c.lastSync) {
-      el.innerHTML = `<span class="pill ok">${esc(c.latestVersion || 'Đã đồng bộ')} · ${esc(c.lastSync || '')} · ${totalFiles} tệp</span>${link}`;
+      el.innerHTML = `<span class="pill ok">${esc(c.latestVersion || 'Đã đồng bộ')} · ${esc(c.lastSync || '')} · ${totalFiles} tệp</span>`;
     } else if (c.apiUrl) {
-      el.innerHTML = `<span class="pill warn">Sẵn sàng · Nhập họ tên để mở hồ sơ</span>${link}`;
+      el.innerHTML = `<span class="pill warn">Sẵn sàng · Nhập họ tên để mở hoặc tạo hồ sơ</span>`;
     } else {
       el.innerHTML = `<span class="pill muted">Chế độ lưu trên máy</span>`;
     }
@@ -1325,14 +1334,13 @@ function simRegister(user, pass, confirm, exists) {
       S = Object.assign(def(), res.state);
       S.mockups = Object.assign(def().mockups, res.state.mockups || {});
     }
-    S.f.studentName = res.studentName || studentName;
+    S.f.studentName = res.studentName || normalizeStudentName(studentName);
     S.versions = Array.isArray(res.versions) ? res.versions : [];
     S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek || {});
     S.cloud = {
       apiUrl: keepApi,
       latestVersion: res.latestVersion || (S.versions[0] && S.versions[0].version) || '',
-      lastSync: res.updatedAt || new Date().toLocaleTimeString('vi-VN'),
-      folderUrl: res.folderUrl || ''
+      lastSync: res.updatedAt || new Date().toLocaleTimeString('vi-VN')
     };
     if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
     if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
@@ -1341,42 +1349,36 @@ function simRegister(user, pass, confirm, exists) {
   }
 
   $('btnCloudLoad').addEventListener('click', async () => {
-    const studentName = $('cloudStudentName').value.trim().replace(/\s+/g, ' ');
-    const err = validateStudentName(studentName);
+    const rawName = $('cloudStudentName').value;
+    const err = validateStudentName(rawName);
     if (err) { toast(err); return; }
+    const studentName = normalizeStudentName(rawName);
     const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
     try {
-      toast('Đang tìm hồ sơ của ' + studentName + '...');
+      toast('Đang kiểm tra hồ sơ của ' + studentName + '...');
       const prevKey = studentKeyFromName(val('studentName'));
       const newKey = studentKeyFromName(studentName);
-      const res = await postCloud(api, { action: 'load_student', studentName });
-      if (res.isNew) {
-        if (prevKey && prevKey !== newKey) {
-          S = def();
-          S.cloud.apiUrl = api;
-        }
-        setFieldValue('studentName', studentName);
-        S.versions = [];
-        S.filesByWeek = def().filesByWeek;
-        S.cloud.latestVersion = ''; S.cloud.lastSync = ''; S.cloud.folderUrl = '';
-        try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
-        syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
-        toast('Chưa có hồ sơ trên Drive cho tên này — hãy bấm "Lưu phiên bản mới" khi làm bài.');
-        return;
-      }
+      const initialState = (prevKey && prevKey !== newKey) ? { f: { studentName } } : S;
+      const res = await postCloud(api, { action: 'load_student', studentName, initialState });
       applyLoadedState(studentName, res);
-      toast(`Đã mở hồ sơ ${S.f.studentName} (${S.cloud.latestVersion || 'Drive'})!`);
-    } catch (e) { toast(e.message || 'Không tải được hồ sơ từ Drive.'); }
+      if (res.created) {
+        loadStudentAutocomplete();
+        toast(`Đã tạo hồ sơ mới "${S.f.studentName}" (${S.cloud.latestVersion || 'v001'})!`);
+      } else {
+        toast(`Đã mở hồ sơ "${S.f.studentName}" (${S.cloud.latestVersion || 'mới nhất'})!`);
+      }
+    } catch (e) { toast(e.message || 'Không mở được hồ sơ.'); }
   });
 
   $('btnCloudSave').addEventListener('click', async () => {
-    const studentName = $('cloudStudentName').value.trim().replace(/\s+/g, ' ');
-    const err = validateStudentName(studentName);
+    const rawName = $('cloudStudentName').value;
+    const err = validateStudentName(rawName);
     if (err) { toast(err); return; }
+    const studentName = normalizeStudentName(rawName);
     setFieldValue('studentName', studentName);
     const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
     try {
-      toast('Đang lưu phiên bản mới lên Drive...');
+      toast('Đang lưu phiên bản mới...');
       const res = await postCloud(api, {
         action: 'save_version',
         studentName,
@@ -1387,10 +1389,9 @@ function simRegister(user, pass, confirm, exists) {
       if (res.filesByWeek) S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek);
       S.cloud.latestVersion = res.version || '';
       S.cloud.lastSync = res.savedAt || new Date().toLocaleTimeString('vi-VN');
-      if (res.folderUrl) S.cloud.folderUrl = res.folderUrl;
       save(); renderCloudStatus(); refresh();
       toast(`Đã lưu phiên bản ${res.version || 'mới'} (không ghi đè bản cũ)!`);
-    } catch (e) { toast(e.message || 'Không lưu được lên Drive.'); }
+    } catch (e) { toast(e.message || 'Không lưu được phiên bản mới.'); }
   });
 
   async function openDriveFile(fileId, fileName) {
@@ -1564,16 +1565,17 @@ function simRegister(user, pass, confirm, exists) {
     const subBtn = ev.target.closest('[data-submit-target]');
     if (subBtn) {
       const target = subBtn.dataset.submitTarget;
-      const studentName = ($('cloudStudentName').value || val('studentName')).trim().replace(/\s+/g, ' ');
-      const err = validateStudentName(studentName);
+      const rawName = $('cloudStudentName').value || val('studentName');
+      const err = validateStudentName(rawName);
       if (err) { toast(err); return; }
+      const studentName = normalizeStudentName(rawName);
       setFieldValue('studentName', studentName);
       const rawFiles = pendingFiles[target] || [];
       const totalBytes = rawFiles.reduce((s, f) => s + (f.size || 0), 0);
-      if (totalBytes > 10 * 1024 * 1024) { toast('Tổng dung lượng tệp vượt 10 MB. Hãy nén bớt ảnh hoặc gửi link Drive.'); return; }
+      if (totalBytes > 10 * 1024 * 1024) { toast('Tổng dung lượng tệp vượt 10 MB. Hãy nén bớt ảnh hoặc gửi link.'); return; }
       try {
         subBtn.disabled = true;
-        toast('Đang nộp phiên bản mới lên Google Drive...');
+        toast('Đang nộp phiên bản mới...');
         const files = await Promise.all(rawFiles.map(readFileBase64));
         if (target === 'tuan-1') {
           ['login', 'register', 'home'].forEach((slot) => {
@@ -1585,7 +1587,7 @@ function simRegister(user, pass, confirm, exists) {
         }
         const payload = buildSubmitPayload(target, { studentName, files, links: val('link_' + target), state: S });
         const res = await postCloud(S.cloud.apiUrl || DEFAULT_CLOUD_API, payload);
-        S.submissions[target] = { status: res.status || 'Đã lưu', submittedAt: res.submittedAt || '', filesCount: res.filesCount || files.length, folderUrl: res.folderUrl || '' };
+        S.submissions[target] = { status: res.status || 'Đã lưu', submittedAt: res.submittedAt || '', filesCount: res.filesCount || files.length };
         if (Array.isArray(res.versions)) S.versions = res.versions;
         if (res.filesByWeek) S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek);
         S.cloud.latestVersion = res.version || S.cloud.latestVersion;
@@ -1879,10 +1881,10 @@ function simRegister(user, pass, confirm, exists) {
 
   /* ---------- Cập nhật phần suy ra ---------- */
   function renderFileList(files) {
-    if (!files || !files.length) return '<div class="tiny">Chưa có tệp nào nộp lên Drive ở mục này.</div>';
+    if (!files || !files.length) return '<div class="tiny">Chưa có tệp bài làm nào ở mục này.</div>';
     return '<div class="file-list">' + files.map((f) =>
       `<div class="file-item"><div class="file-meta"><span class="ver-badge">${esc(f.version || 'v001')}</span><b>${esc(f.name)}</b><span class="tiny">${formatBytes(f.size)} · ${esc(f.uploadedAt || '')}</span></div>` +
-      `<div class="actions" style="margin:0"><button class="btn outline small" type="button" data-open-file="${esc(f.id)}" data-file-name="${esc(f.name)}">Tải / Xem</button></div></div>`
+      `<div class="actions" style="margin:0"><button class="btn outline small" type="button" data-open-file="${esc(f.id)}" data-file-name="${esc(f.name)}">Tải về</button></div></div>`
     ).join('') + '</div>';
   }
   const swatch = (h) => `<span class="swatch" style="background:${h}"></span>${h}`;
@@ -1943,9 +1945,9 @@ function simRegister(user, pass, confirm, exists) {
     },
     versionHistory: () => {
       const vers = S.versions || [];
-      if (!vers.length) return '<div class="empty">Chưa có phiên bản nào lưu trên Drive. Nhập tên ở trên rồi bấm "Mở hồ sơ của em" hoặc "Lưu phiên bản mới".</div>';
+      if (!vers.length) return '<div class="empty">Chưa có phiên bản nào được lưu. Nhập họ tên ở trên rồi bấm "Mở / Tạo hồ sơ" hoặc "Lưu phiên bản mới".</div>';
       return '<div class="ver-list">' + vers.map((v) =>
-        `<div class="ver-item"><div class="file-meta"><span class="ver-badge">${esc(v.version)}</span><b>${esc(v.tag === 'nhap' ? 'Lưu nháp' : 'Nộp ' + v.tag)}</b><span class="tiny">${esc(v.savedAt || '')}</span></div>` +
+        `<div class="ver-item"><div class="file-meta"><span class="ver-badge">${esc(v.version)}</span><b>${esc(v.tag === 'nhap' ? 'Lưu nháp' : v.tag === 'khoi-tao' ? 'Khởi tạo hồ sơ' : 'Nộp ' + v.tag)}</b><span class="tiny">${esc(v.savedAt || '')}</span></div>` +
         `<div class="actions" style="margin:0"><button class="btn outline small" type="button" data-load-ver="${esc(v.id)}" data-ver-label="${esc(v.version)}">Xem phiên bản này</button></div></div>`
       ).join('') + '</div>';
     }
@@ -1953,13 +1955,12 @@ function simRegister(user, pass, confirm, exists) {
   ['tuan-1', 'tuan-2', 'tuan-3', 'tuan-4'].forEach((tg) => {
     OUTH['sub_' + tg] = () => {
       const sub = S.submissions && S.submissions[tg];
-      if (!sub) return `<span class="pill muted">Chưa nộp mục ${tg} lên Drive</span>`;
-      const lnk = sub.folderUrl ? ` <a href="${esc(sub.folderUrl)}" target="_blank" rel="noopener">Mở thư mục Drive ↗</a>` : '';
-      return `<span class="pill ok">${esc(sub.status)} · ${esc(sub.submittedAt)} (${sub.filesCount || 0} tệp)</span>${lnk}`;
+      if (!sub) return `<span class="pill muted">Chưa nộp mục ${tg}</span>`;
+      return `<span class="pill ok">${esc(sub.status)} · ${esc(sub.submittedAt)} (${sub.filesCount || 0} tệp)</span>`;
     };
     OUTH['files_' + tg] = () => {
       const list = (S.filesByWeek && S.filesByWeek[tg]) || [];
-      return list.length ? `<div><b class="tiny" style="text-transform:uppercase">Tệp đã nộp trên Drive (${list.length})</b>${renderFileList(list)}</div>` : '';
+      return list.length ? `<div><b class="tiny" style="text-transform:uppercase">Tệp bài làm đã nộp (${list.length})</b>${renderFileList(list)}</div>` : '';
     };
   });
 

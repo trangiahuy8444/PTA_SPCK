@@ -8,13 +8,16 @@ const assert = require('assert');
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'site', 'index.html'), 'utf8');
 
-// 0. Kiểm tra bảo mật & Google Apps Script (apps-script/Code.gs) bất biến (không ghi đè)
+// 0. Kiểm tra bảo mật & Google Apps Script (apps-script/Code.gs) bất biến + không trả link Drive cho HS
 const gsCode = fs.readFileSync(path.join(ROOT, 'apps-script', 'Code.gs'), 'utf8');
 new vm.Script(gsCode);
 assert.ok(!gsCode.includes('.setContent('), 'Code.gs không dùng setContent để ghi đè file');
+assert.ok(gsCode.includes('function normalizeStudentName_'), 'Code.gs có hàm chuẩn hóa tên không dấu viết thường');
+assert.ok(!/^\s*(folderUrl|viewUrl)\s*:/m.test(gsCode), 'Code.gs không trả về folderUrl/viewUrl cho trình duyệt HS');
 ['setupProject', 'doGet', 'doPost', 'handleLoadStudent_', 'handleLoadVersion_', 'handleSaveVersion_', 'handleSubmitWeek_', 'handleGetFile_', 'handleListStudents_'].forEach((fn) => {
   assert.ok(gsCode.includes('function ' + fn), 'Code.gs có hàm ' + fn);
 });
+assert.ok(!html.includes('Mở Drive') && !html.includes('Mở thư mục Drive'), 'Không hiển thị link Drive trên giao diện học sinh');
 
 // 1. Unit tests cho khối hàm /*PURE*/ ... /*ENDPURE*/
 const pureMatch = html.match(/\/\*PURE\*\/([\s\S]*?)\/\*ENDPURE\*\//);
@@ -77,8 +80,11 @@ assert.ok(ctx.buildWeekAiPrompt(2).includes('StudyFlow') && ctx.buildWeekAiPromp
 assert.ok(ctx.buildWeekAiPrompt(3).includes('txtLoginUser'));
 assert.ok(ctx.buildWeekAiPrompt(4).includes('Pomodoro'));
 
-// Phase 3 pure (tra cứu bằng tên học sinh + formatBytes + buildSubmitPayload)
+// Phase 3 pure (chuẩn hóa tên viết thường không dấu + formatBytes + buildSubmitPayload)
 assert.strictEqual(ctx.DEFAULT_CLOUD_API, 'https://script.google.com/macros/s/AKfycbwTyXdfIQLlGBccyg5gJf06rHKNM-l3CwxnpT3FRZJLY6B28DNzWY6TFHtSUI8rbsy4KA/exec');
+assert.strictEqual(ctx.normalizeStudentName('  Nguyễn  Minh Khang '), 'nguyen minh khang');
+assert.strictEqual(ctx.normalizeStudentName('NGUYEN MINH KHANG'), 'nguyen minh khang');
+assert.strictEqual(ctx.normalizeStudentName('Đặng Ánh Dương'), 'dang anh duong');
 assert.strictEqual(ctx.studentKeyFromName('Nguyễn Minh Khang'), 'nguyen-minh-khang');
 assert.strictEqual(ctx.studentKeyFromName('Đặng Ánh Dương'), 'dang-anh-duong');
 assert.ok(ctx.validateStudentName('A').length > 0);
@@ -89,7 +95,7 @@ assert.strictEqual(ctx.formatBytes(2048), '2.0 KB');
 ctx.S.f.aiAsk2 = 'Hỏi QSS';
 const payload = ctx.buildSubmitPayload('tuan-2', { studentName: 'Nguyễn Minh Khang', files: [] });
 assert.strictEqual(payload.action, 'submit_week');
-assert.strictEqual(payload.studentName, 'Nguyễn Minh Khang');
+assert.strictEqual(payload.studentName, 'nguyen minh khang');
 assert.ok(payload.aiLog.includes('Hỏi QSS'));
 
 // Kiểm tra simRegister
@@ -171,7 +177,8 @@ setTimeout(() => {
   assert.strictEqual(d.getElementById('f_studentName').value, 'Nguyễn Minh Khang', 'tên đồng bộ sang form Tuần 1');
   assert.ok(d.querySelector('[data-outhtml="allFiles"]'), 'Hồ sơ có kho file');
   assert.ok(d.querySelector('[data-outhtml="versionHistory"]'), 'Hồ sơ có lịch sử phiên bản');
-  assert.ok(d.querySelector('[data-outhtml="files_tuan-1"] [data-open-file="file1"]'), 'Hiển thị nút Tải/Xem file Tuần 1');
+  assert.ok(d.querySelector('[data-outhtml="files_tuan-1"] [data-open-file="file1"]'), 'Hiển thị nút Tải về file Tuần 1');
+  assert.strictEqual(d.querySelector('[data-outhtml="files_tuan-1"] [data-open-file="file1"]').textContent.trim(), 'Tải về', 'Nút file ghi Tải về');
   assert.ok(d.querySelector('[data-outhtml="allFiles"] [data-open-file="file1"]'), 'Hiển thị file trong Hồ sơ');
   assert.ok(d.querySelector('[data-outhtml="versionHistory"] [data-load-ver="ver1"]'), 'Hiển thị nút Xem phiên bản cũ');
 

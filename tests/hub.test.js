@@ -159,10 +159,15 @@ setTimeout(() => {
   ['studentName', 'studentClass', 'appName', 'appDesc', 'pal_p', 'pal_b', 'pal_t'].forEach((k) => assert.ok(d.getElementById('f_' + k), 'thiếu ô ' + k));
   assert.ok(d.querySelector('#p-tuan-1 #resetAll'), 'nút xóa dữ liệu nằm ở Tuần 1');
 
-  // Cloud Bar chỉ có tên học sinh (không còn PIN, Mã lớp hay phần Giáo viên)
-  ['cloudStudentName', 'btnCloudLoad', 'btnCloudSave'].forEach((id) => {
-    assert.ok(d.getElementById(id), 'thiếu phần tử Cloud #' + id);
+  // Cloud Bar chỉ có tên học sinh; nút Lưu phiên bản mới và trạng thái nằm trên topbar + cuối các subtab
+  ['cloudStudentName', 'btnCloudLoad', 'btnCloudSave', 'saveStatePill'].forEach((id) => {
+    assert.ok(d.getElementById(id), 'thiếu phần tử #' + id);
   });
+  assert.ok(d.querySelector('header.topbar #btnCloudSave'), '#btnCloudSave nằm trên sticky topbar');
+  assert.ok(d.querySelector('header.topbar #saveStatePill'), '#saveStatePill nằm trên sticky topbar');
+  assert.strictEqual(d.querySelector('#cloudBar #btnCloudSave'), null, 'đã đưa #btnCloudSave ra khỏi #cloudBar');
+  assert.ok(d.querySelectorAll('.btnrow [data-save-version="1"]').length >= 10, 'cuối các subtab và Hồ sơ có nút Lưu phiên bản mới');
+  assert.strictEqual(d.getElementById('btnCloudSave').classList.contains('dirty'), false, 'ban đầu chưa có thay đổi chưa lưu');
   ['cloudPin', 'cloudClass', 'tApiUrl', 'tKey'].forEach((id) => {
     assert.strictEqual(d.getElementById(id), null, 'đã bỏ phần tử #' + id);
   });
@@ -217,6 +222,8 @@ setTimeout(() => {
 
   const c = d.getElementById('f_studentClass'); c.value = '8A1'; c.dispatchEvent(new w.Event('input'));
   assert.ok(/8A1/.test(d.querySelector('[data-out="dossier"]').textContent), 'lớp đi vào hồ sơ');
+  assert.ok(d.getElementById('btnCloudSave').classList.contains('dirty'), 'nút Lưu phiên bản mới đổi trạng thái nhắc lưu khi có chỉnh sửa');
+  assert.ok(/chưa lưu/i.test(d.getElementById('saveStatePill').textContent), 'nhãn trạng thái báo có thay đổi chưa lưu');
   assert.deepStrictEqual(errs, [], 'lỗi script');
   console.log('OK: student-only hub + immutable versioning tests');
   w.close(); process.exit(0);

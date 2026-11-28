@@ -18,7 +18,7 @@
 <body>
 <header class="topbar">
  <div class="brand"><div class="brandmark" aria-hidden="true">✦</div><div><b>APP PRODUCER <span style="color:#93a8ff">· DỰ ÁN CÁ NHÂN</span></b><small>Python + PyQt6 + Qt Designer · 4 tuần</small></div></div>
- <div style="display:flex;gap:10px"><span class="top-pill">Ý TƯỞNG → GIAO DIỆN → CODE → DEMO</span><span class="top-pill">TUẦN 1 · 2 · 3 · 4</span></div>
+ <div class="top-save-wrap no-print"><span class="save-pill" id="saveStatePill">Chưa có thay đổi</span><button class="btn-save-top" type="button" id="btnCloudSave">Lưu phiên bản mới</button></div>
 </header>
 <section class="hero">
  <div class="eyebrow">Individual project · 4 weeks</div>
@@ -773,8 +773,40 @@ function simRegister(user, pass, confirm, exists) {
 
   const $ = (id) => document.getElementById(id);
   const esc = escHtml;
+  let isDirty = false;
+  function setDirty(dirty) {
+    isDirty = !!dirty;
+    const pill = $('saveStatePill');
+    const topBtn = $('btnCloudSave');
+    if (pill) {
+      pill.classList.toggle('dirty', isDirty);
+      pill.classList.toggle('saved', !isDirty && !!(S.cloud && S.cloud.latestVersion));
+      pill.textContent = isDirty
+        ? 'Có thay đổi chưa lưu'
+        : ((S.cloud && S.cloud.latestVersion) ? `Đã lưu ${S.cloud.latestVersion}` : 'Chưa có thay đổi');
+    }
+    if (topBtn) {
+      topBtn.classList.toggle('dirty', isDirty);
+      topBtn.textContent = isDirty ? 'Lưu phiên bản mới *' : 'Lưu phiên bản mới';
+    }
+    document.querySelectorAll('[data-save-version]').forEach((btn) => {
+      btn.classList.toggle('dirty', isDirty);
+      btn.textContent = isDirty ? 'Lưu phiên bản mới *' : 'Lưu phiên bản mới';
+    });
+  }
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('beforeunload', (ev) => {
+      if (!isDirty) return;
+      ev.preventDefault();
+      ev.returnValue = '';
+    });
+  }
   let saveTimer = null;
-  function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
+  function save() {
+    setDirty(true);
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300);
+  }
   let toastTimer = null;
   function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
 
@@ -819,7 +851,7 @@ function simRegister(user, pass, confirm, exists) {
         : (idx > 0 ? `<button class="btn secondary" type="button" data-go="${PAGES[idx - 1][0]}">← ${PAGES[idx - 1][1]}</button>` : '<span></span>');
       const next = i < tabs.length - 1 ? `<button class="btn primary" type="button" data-tab="${slug}:${tabs[i + 1][0]}">${tabs[i + 1][1]} →</button>`
         : (idx < PAGES.length - 1 ? `<button class="btn primary" type="button" data-go="${PAGES[idx + 1][0]}">${PAGES[idx + 1][1]} →</button>` : '<span></span>');
-      return `<div class="sub ${i ? '' : 'on'}" data-sub="${slug}:${t[0]}">${t[2]}<div class="btnrow">${prev}${next}</div></div>`;
+      return `<div class="sub ${i ? '' : 'on'}" data-sub="${slug}:${t[0]}">${t[2]}<div class="btnrow">${prev}<button class="btn outline small btnrow-save" type="button" data-save-version="1">Lưu phiên bản mới</button>${next}</div></div>`;
     }).join('');
     return `<section class="panel${slug === 'tuan-1' ? ' active' : ''}" id="p-${slug}" data-slug="${slug}">${head(step, title, lead, time)}${nav}${body}</section>`;
   }
@@ -828,7 +860,7 @@ function simRegister(user, pass, confirm, exists) {
  <div class="cloud-top"><div><b>Hồ sơ cá nhân của em</b> <span class="tiny">Nhập Họ và tên (hệ thống tự chuẩn hóa viết thường không dấu). Nếu chưa có hồ sơ sẽ tự tạo mới; nếu đã có sẽ tải toàn bộ bài làm &amp; tệp về web.</span></div><div id="cloudStatus"><span class="pill muted">Chưa mở hồ sơ</span></div></div>
  <div class="cloud-grid">
   <div class="field"><label for="cloudStudentName">Họ và tên học sinh</label><input id="cloudStudentName" list="studentList" placeholder="Nhập họ và tên đầy đủ (VD: nguyen minh khang)" autocomplete="off"><datalist id="studentList"></datalist></div>
-  <div class="actions" style="margin:0"><button class="btn primary small" type="button" id="btnCloudLoad">Mở / Tạo hồ sơ</button><button class="btn outline small" type="button" id="btnCloudSave">Lưu phiên bản mới</button></div>
+  <div class="actions" style="margin:0"><button class="btn primary small" type="button" id="btnCloudLoad">Mở / Tạo hồ sơ</button></div>
  </div>
 </section>`;
 
@@ -1001,7 +1033,7 @@ function simRegister(user, pass, confirm, exists) {
  <h3>Lịch sử các phiên bản đã lưu (không ghi đè)</h3>
  <div data-outhtml="versionHistory"></div>
  <h3>Xem trước hồ sơ văn bản</h3><div class="codebox" data-out="dossier" style="max-height:460px"></div>
- <div class="btnrow"><button class="btn secondary" type="button" data-go="tuan-4">← Tuần 4</button><span></span></div>
+ <div class="btnrow"><button class="btn secondary" type="button" data-go="tuan-4">← Tuần 4</button><button class="btn outline small btnrow-save" type="button" data-save-version="1">Lưu phiên bản mới</button><span></span></div>
 </section>`;
 
   /* ---------- Dựng trang ---------- */
@@ -1125,7 +1157,7 @@ function simRegister(user, pass, confirm, exists) {
     if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
     if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
     try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
-    syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
+    syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh(); setDirty(false);
   }
 
   $('btnCloudLoad').addEventListener('click', async () => {
@@ -1150,13 +1182,25 @@ function simRegister(user, pass, confirm, exists) {
     } catch (e) { toast(e.message || 'Không mở được hồ sơ.'); }
   });
 
-  $('btnCloudSave').addEventListener('click', async () => {
-    const rawName = $('cloudStudentName').value;
+  let isSavingCloud = false;
+  async function saveVersionToCloud() {
+    if (isSavingCloud) return;
+    const rawName = $('cloudStudentName').value || val('studentName');
     const err = validateStudentName(rawName);
-    if (err) { toast(err); return; }
+    if (err) {
+      toast(err);
+      const inp = $('cloudStudentName');
+      if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+      return;
+    }
     const studentName = normalizeStudentName(rawName);
     setFieldValue('studentName', studentName);
     const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
+    const topBtn = $('btnCloudSave');
+    const footerBtns = Array.from(document.querySelectorAll('[data-save-version]'));
+    isSavingCloud = true;
+    if (topBtn) { topBtn.disabled = true; topBtn.textContent = 'Đang lưu...'; }
+    footerBtns.forEach((b) => { b.disabled = true; });
     try {
       toast('Đang lưu phiên bản mới...');
       const res = await postCloud(api, {
@@ -1169,10 +1213,18 @@ function simRegister(user, pass, confirm, exists) {
       if (res.filesByWeek) S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek);
       S.cloud.latestVersion = res.version || '';
       S.cloud.lastSync = res.savedAt || new Date().toLocaleTimeString('vi-VN');
-      save(); renderCloudStatus(); refresh();
+      save(); renderCloudStatus(); refresh(); setDirty(false);
       toast(`Đã lưu phiên bản ${res.version || 'mới'} (không ghi đè bản cũ)!`);
-    } catch (e) { toast(e.message || 'Không lưu được phiên bản mới.'); }
-  });
+    } catch (e) {
+      toast(e.message || 'Không lưu được phiên bản mới.');
+    } finally {
+      isSavingCloud = false;
+      if (topBtn) topBtn.disabled = false;
+      footerBtns.forEach((b) => { b.disabled = false; });
+      setDirty(isDirty);
+    }
+  }
+  $('btnCloudSave').addEventListener('click', saveVersionToCloud);
 
   async function openDriveFile(fileId, fileName) {
     const studentName = ($('cloudStudentName').value || val('studentName')).trim();
@@ -1337,6 +1389,10 @@ function simRegister(user, pass, confirm, exists) {
       await openDriveFile(openF.dataset.openFile, openF.dataset.fileName);
       return;
     }
+    if (ev.target.closest('[data-save-version]')) {
+      await saveVersionToCloud();
+      return;
+    }
     const loadV = ev.target.closest('[data-load-ver]');
     if (loadV) {
       await loadSpecificVersion(loadV.dataset.loadVer, loadV.dataset.verLabel);
@@ -1376,7 +1432,7 @@ function simRegister(user, pass, confirm, exists) {
         pendingFiles[target] = [];
         const pickedEl = document.querySelector(`[data-sub-picked="${target}"]`);
         if (pickedEl) pickedEl.textContent = 'Chưa chọn tệp nào (tối đa 10 MB/lần nộp).';
-        syncAllInputs(); renderCloudStatus(); save(); refresh();
+        syncAllInputs(); renderCloudStatus(); save(); refresh(); setDirty(false);
         toast(`Đã nộp ${target} · Phiên bản ${res.version || 'mới'}!`);
       } catch (e) {
         toast(e.message || 'Nộp bài chưa thành công.');
@@ -1776,13 +1832,13 @@ function simRegister(user, pass, confirm, exists) {
       const keepApi = S.cloud.apiUrl;
       S = def(); S.cloud.apiUrl = keepApi;
       try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
-      syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
+      syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh(); setDirty(false);
       toast('Đã xóa bản nháp trên trình duyệt này. Các phiên bản trên Drive vẫn giữ nguyên.');
     } else { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xóa bản nháp'; armT = setTimeout(() => { b.dataset.armed = ''; b.textContent = label; }, 4000); }
   });
 
   /* ---------- Khởi tạo ---------- */
-  bindStatic(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); drawTimer(); refresh();
+  bindStatic(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); drawTimer(); refresh(); setDirty(false);
   loadStudentAutocomplete();
   const h = location.hash.replace('#', '');
   showPage(PAGES.some((p) => p[0] === h) ? h : 'tuan-1');

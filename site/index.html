@@ -28,6 +28,16 @@ code{background:#eef1f7;border-radius:5px;padding:1px 5px;font-size:12px}
 .brandmark{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#7888ff,#28b8a6);display:grid;place-items:center;font-size:21px}
 .brand b{font-size:14px;letter-spacing:.4px}.brand small{display:block;color:#b9c5df;font-size:11px}
 .top-pill{font-size:11px;border:1px solid #43506e;border-radius:99px;padding:6px 10px;color:#dbe4f7;white-space:nowrap}
+.top-save-wrap{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.save-pill{font-size:11px;font-weight:700;border:1px solid #43506e;border-radius:99px;padding:6px 11px;color:#cbd5e1;background:rgba(255,255,255,.06);white-space:nowrap}
+.save-pill.dirty{color:#fde68a;border-color:#d97706;background:rgba(217,119,6,.18)}
+.save-pill.saved{color:#86efac;border-color:#15803d;background:rgba(21,128,61,.18)}
+.btn-save-top{background:#2563eb;color:#fff;border:1px solid #60a5fa;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap;transition:.16s}
+.btn-save-top:hover{background:#1d4ed8;transform:translateY(-1px)}
+.btn-save-top.dirty{background:#d97706;border-color:#fbbf24;box-shadow:0 0 0 3px rgba(245,158,11,.28)}
+.btn-save-top.dirty:hover{background:#b45309}
+.btn-save-top:disabled{opacity:.7;cursor:wait;transform:none}
+.btnrow-save.dirty{border-color:#d97706;background:#fffbeb;color:#92400e}
 .hero{background:linear-gradient(115deg,#1a2547,#353e83 62%,#167d82);color:#fff;padding:34px max(16px,calc((100vw - 1240px)/2)) 30px}
 .eyebrow{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:800;color:#b7c7ff}
 .hero h1{font-size:clamp(26px,4vw,40px);line-height:1.15;margin:10px 0 12px;max-width:780px;text-wrap:balance}
@@ -219,7 +229,7 @@ ul.checks li.ok .mark{background:var(--green);border-color:var(--green);color:#f
 .file-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 .ver-badge{background:#eef2ff;color:var(--brand);border-radius:6px;padding:2px 7px;font:11px ui-monospace,monospace;font-weight:800}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static}.sidebar nav{display:grid;grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(2,1fr)}.cloud-grid{grid-template-columns:1fr}}
-@media(max-width:700px){.grid2,.grid3,.grid4,.split,.palette,.row,.widget-list,.mockup-grid,.level-grid,.brief-meta,.brief-swatches,.res-grid,.debug-item,.cloud-grid{grid-template-columns:1fr}.panel-head,.brief-head{display:block}.time{display:inline-block;margin-top:10px}.preview dl{grid-template-columns:1fr;gap:2px}.preview dd{margin-bottom:8px}.nrow{grid-template-columns:1fr}.nrow.head{display:none}.rub{grid-template-columns:1fr}.rub .sc{text-align:left}.wkbar{grid-template-columns:1fr 46px}.wkbar span:first-child{grid-column:1/-1}.topbar .top-pill:last-child{display:none}}
+@media(max-width:700px){.grid2,.grid3,.grid4,.split,.palette,.row,.widget-list,.mockup-grid,.level-grid,.brief-meta,.brief-swatches,.res-grid,.debug-item,.cloud-grid{grid-template-columns:1fr}.panel-head,.brief-head{display:block}.time{display:inline-block;margin-top:10px}.preview dl{grid-template-columns:1fr;gap:2px}.preview dd{margin-bottom:8px}.nrow{grid-template-columns:1fr}.nrow.head{display:none}.rub{grid-template-columns:1fr}.rub .sc{text-align:left}.wkbar{grid-template-columns:1fr 46px}.wkbar span:first-child{grid-column:1/-1}.topbar .save-pill{display:none}}
 @media(prefers-reduced-motion:reduce){.track i,.toast{transition:none}}
 @media print{
  body{background:#fff}
@@ -238,7 +248,7 @@ ul.checks li.ok .mark{background:var(--green);border-color:var(--green);color:#f
 <body>
 <header class="topbar">
  <div class="brand"><div class="brandmark" aria-hidden="true">✦</div><div><b>APP PRODUCER <span style="color:#93a8ff">· DỰ ÁN CÁ NHÂN</span></b><small>Python + PyQt6 + Qt Designer · 4 tuần</small></div></div>
- <div style="display:flex;gap:10px"><span class="top-pill">Ý TƯỞNG → GIAO DIỆN → CODE → DEMO</span><span class="top-pill">TUẦN 1 · 2 · 3 · 4</span></div>
+ <div class="top-save-wrap no-print"><span class="save-pill" id="saveStatePill">Chưa có thay đổi</span><button class="btn-save-top" type="button" id="btnCloudSave">Lưu phiên bản mới</button></div>
 </header>
 <section class="hero">
  <div class="eyebrow">Individual project · 4 weeks</div>
@@ -993,8 +1003,40 @@ function simRegister(user, pass, confirm, exists) {
 
   const $ = (id) => document.getElementById(id);
   const esc = escHtml;
+  let isDirty = false;
+  function setDirty(dirty) {
+    isDirty = !!dirty;
+    const pill = $('saveStatePill');
+    const topBtn = $('btnCloudSave');
+    if (pill) {
+      pill.classList.toggle('dirty', isDirty);
+      pill.classList.toggle('saved', !isDirty && !!(S.cloud && S.cloud.latestVersion));
+      pill.textContent = isDirty
+        ? 'Có thay đổi chưa lưu'
+        : ((S.cloud && S.cloud.latestVersion) ? `Đã lưu ${S.cloud.latestVersion}` : 'Chưa có thay đổi');
+    }
+    if (topBtn) {
+      topBtn.classList.toggle('dirty', isDirty);
+      topBtn.textContent = isDirty ? 'Lưu phiên bản mới *' : 'Lưu phiên bản mới';
+    }
+    document.querySelectorAll('[data-save-version]').forEach((btn) => {
+      btn.classList.toggle('dirty', isDirty);
+      btn.textContent = isDirty ? 'Lưu phiên bản mới *' : 'Lưu phiên bản mới';
+    });
+  }
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('beforeunload', (ev) => {
+      if (!isDirty) return;
+      ev.preventDefault();
+      ev.returnValue = '';
+    });
+  }
   let saveTimer = null;
-  function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
+  function save() {
+    setDirty(true);
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300);
+  }
   let toastTimer = null;
   function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
 
@@ -1039,7 +1081,7 @@ function simRegister(user, pass, confirm, exists) {
         : (idx > 0 ? `<button class="btn secondary" type="button" data-go="${PAGES[idx - 1][0]}">← ${PAGES[idx - 1][1]}</button>` : '<span></span>');
       const next = i < tabs.length - 1 ? `<button class="btn primary" type="button" data-tab="${slug}:${tabs[i + 1][0]}">${tabs[i + 1][1]} →</button>`
         : (idx < PAGES.length - 1 ? `<button class="btn primary" type="button" data-go="${PAGES[idx + 1][0]}">${PAGES[idx + 1][1]} →</button>` : '<span></span>');
-      return `<div class="sub ${i ? '' : 'on'}" data-sub="${slug}:${t[0]}">${t[2]}<div class="btnrow">${prev}${next}</div></div>`;
+      return `<div class="sub ${i ? '' : 'on'}" data-sub="${slug}:${t[0]}">${t[2]}<div class="btnrow">${prev}<button class="btn outline small btnrow-save" type="button" data-save-version="1">Lưu phiên bản mới</button>${next}</div></div>`;
     }).join('');
     return `<section class="panel${slug === 'tuan-1' ? ' active' : ''}" id="p-${slug}" data-slug="${slug}">${head(step, title, lead, time)}${nav}${body}</section>`;
   }
@@ -1048,7 +1090,7 @@ function simRegister(user, pass, confirm, exists) {
  <div class="cloud-top"><div><b>Hồ sơ cá nhân của em</b> <span class="tiny">Nhập Họ và tên (hệ thống tự chuẩn hóa viết thường không dấu). Nếu chưa có hồ sơ sẽ tự tạo mới; nếu đã có sẽ tải toàn bộ bài làm &amp; tệp về web.</span></div><div id="cloudStatus"><span class="pill muted">Chưa mở hồ sơ</span></div></div>
  <div class="cloud-grid">
   <div class="field"><label for="cloudStudentName">Họ và tên học sinh</label><input id="cloudStudentName" list="studentList" placeholder="Nhập họ và tên đầy đủ (VD: nguyen minh khang)" autocomplete="off"><datalist id="studentList"></datalist></div>
-  <div class="actions" style="margin:0"><button class="btn primary small" type="button" id="btnCloudLoad">Mở / Tạo hồ sơ</button><button class="btn outline small" type="button" id="btnCloudSave">Lưu phiên bản mới</button></div>
+  <div class="actions" style="margin:0"><button class="btn primary small" type="button" id="btnCloudLoad">Mở / Tạo hồ sơ</button></div>
  </div>
 </section>`;
 
@@ -1221,7 +1263,7 @@ function simRegister(user, pass, confirm, exists) {
  <h3>Lịch sử các phiên bản đã lưu (không ghi đè)</h3>
  <div data-outhtml="versionHistory"></div>
  <h3>Xem trước hồ sơ văn bản</h3><div class="codebox" data-out="dossier" style="max-height:460px"></div>
- <div class="btnrow"><button class="btn secondary" type="button" data-go="tuan-4">← Tuần 4</button><span></span></div>
+ <div class="btnrow"><button class="btn secondary" type="button" data-go="tuan-4">← Tuần 4</button><button class="btn outline small btnrow-save" type="button" data-save-version="1">Lưu phiên bản mới</button><span></span></div>
 </section>`;
 
   /* ---------- Dựng trang ---------- */
@@ -1345,7 +1387,7 @@ function simRegister(user, pass, confirm, exists) {
     if (!Array.isArray(S.w1Widgets)) S.w1Widgets = [];
     if (!Array.isArray(S.bugs) || !S.bugs.length) S.bugs = def().bugs;
     try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
-    syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
+    syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh(); setDirty(false);
   }
 
   $('btnCloudLoad').addEventListener('click', async () => {
@@ -1370,13 +1412,25 @@ function simRegister(user, pass, confirm, exists) {
     } catch (e) { toast(e.message || 'Không mở được hồ sơ.'); }
   });
 
-  $('btnCloudSave').addEventListener('click', async () => {
-    const rawName = $('cloudStudentName').value;
+  let isSavingCloud = false;
+  async function saveVersionToCloud() {
+    if (isSavingCloud) return;
+    const rawName = $('cloudStudentName').value || val('studentName');
     const err = validateStudentName(rawName);
-    if (err) { toast(err); return; }
+    if (err) {
+      toast(err);
+      const inp = $('cloudStudentName');
+      if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.focus(); }
+      return;
+    }
     const studentName = normalizeStudentName(rawName);
     setFieldValue('studentName', studentName);
     const api = S.cloud.apiUrl || DEFAULT_CLOUD_API;
+    const topBtn = $('btnCloudSave');
+    const footerBtns = Array.from(document.querySelectorAll('[data-save-version]'));
+    isSavingCloud = true;
+    if (topBtn) { topBtn.disabled = true; topBtn.textContent = 'Đang lưu...'; }
+    footerBtns.forEach((b) => { b.disabled = true; });
     try {
       toast('Đang lưu phiên bản mới...');
       const res = await postCloud(api, {
@@ -1389,10 +1443,18 @@ function simRegister(user, pass, confirm, exists) {
       if (res.filesByWeek) S.filesByWeek = Object.assign(def().filesByWeek, res.filesByWeek);
       S.cloud.latestVersion = res.version || '';
       S.cloud.lastSync = res.savedAt || new Date().toLocaleTimeString('vi-VN');
-      save(); renderCloudStatus(); refresh();
+      save(); renderCloudStatus(); refresh(); setDirty(false);
       toast(`Đã lưu phiên bản ${res.version || 'mới'} (không ghi đè bản cũ)!`);
-    } catch (e) { toast(e.message || 'Không lưu được phiên bản mới.'); }
-  });
+    } catch (e) {
+      toast(e.message || 'Không lưu được phiên bản mới.');
+    } finally {
+      isSavingCloud = false;
+      if (topBtn) topBtn.disabled = false;
+      footerBtns.forEach((b) => { b.disabled = false; });
+      setDirty(isDirty);
+    }
+  }
+  $('btnCloudSave').addEventListener('click', saveVersionToCloud);
 
   async function openDriveFile(fileId, fileName) {
     const studentName = ($('cloudStudentName').value || val('studentName')).trim();
@@ -1557,6 +1619,10 @@ function simRegister(user, pass, confirm, exists) {
       await openDriveFile(openF.dataset.openFile, openF.dataset.fileName);
       return;
     }
+    if (ev.target.closest('[data-save-version]')) {
+      await saveVersionToCloud();
+      return;
+    }
     const loadV = ev.target.closest('[data-load-ver]');
     if (loadV) {
       await loadSpecificVersion(loadV.dataset.loadVer, loadV.dataset.verLabel);
@@ -1596,7 +1662,7 @@ function simRegister(user, pass, confirm, exists) {
         pendingFiles[target] = [];
         const pickedEl = document.querySelector(`[data-sub-picked="${target}"]`);
         if (pickedEl) pickedEl.textContent = 'Chưa chọn tệp nào (tối đa 10 MB/lần nộp).';
-        syncAllInputs(); renderCloudStatus(); save(); refresh();
+        syncAllInputs(); renderCloudStatus(); save(); refresh(); setDirty(false);
         toast(`Đã nộp ${target} · Phiên bản ${res.version || 'mới'}!`);
       } catch (e) {
         toast(e.message || 'Nộp bài chưa thành công.');
@@ -1996,13 +2062,13 @@ function simRegister(user, pass, confirm, exists) {
       const keepApi = S.cloud.apiUrl;
       S = def(); S.cloud.apiUrl = keepApi;
       try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {}
-      syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh();
+      syncAllInputs(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); refresh(); setDirty(false);
       toast('Đã xóa bản nháp trên trình duyệt này. Các phiên bản trên Drive vẫn giữ nguyên.');
     } else { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xóa bản nháp'; armT = setTimeout(() => { b.dataset.armed = ''; b.textContent = label; }, 4000); }
   });
 
   /* ---------- Khởi tạo ---------- */
-  bindStatic(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); drawTimer(); refresh();
+  bindStatic(); syncCloudBarInputs(); renderMockupSlots(); renderBugs(); renderNames(); drawTimer(); refresh(); setDirty(false);
   loadStudentAutocomplete();
   const h = location.hash.replace('#', '');
   showPage(PAGES.some((p) => p[0] === h) ? h : 'tuan-1');

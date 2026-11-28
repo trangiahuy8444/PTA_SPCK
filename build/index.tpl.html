@@ -608,24 +608,6 @@ function buildWeekAiPrompt(w) {
     `- Chức năng: ${cname}\n- Dữ liệu: ${cdata}\n- Widget trên home.ui: ${cwid}\n` +
     `Hãy chia giúp mình thành 3 bước code ngắn gọn (dễ hiểu với học sinh mới học OOP Python) và gợi ý 3 ca kiểm thử để tự kiểm tra.`;
 }
-function buildAssetsPy() {
-  return `import os
-from PyQt6.QtCore import QSize
-from PyQt6.QtGui import QIcon, QPixmap
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Đặt đoạn này trong __init__ của LoginWindow / HomeWindow sau self.ui.setupUi(self):
-icon_path = os.path.join(BASE_DIR, "assets", "icons", "login.png")
-if os.path.exists(icon_path):
-    self.ui.${safeName('btnLogin')}.setIcon(QIcon(icon_path))
-    self.ui.${safeName('btnLogin')}.setIconSize(QSize(20, 20))
-
-logo_path = os.path.join(BASE_DIR, "assets", "images", "logo.png")
-if os.path.exists(logo_path):
-    self.ui.lblLogo.setPixmap(QPixmap(logo_path).scaled(64, 64))
-`;
-}
 function buildQss() {
   const P = hexv('pal_p'), B = hexv('pal_b'), T = hexv('pal_t'), BT = btnTextColor(P);
   return `QMainWindow, QWidget#centralwidget {\n    background-color: ${B};\n    color: ${T};\n    font-size: 14px;\n}\n\n` +
@@ -1147,10 +1129,8 @@ function simRegister(user, pass, confirm, exists) {
  <div class="res-grid">${ICON_RESOURCES.map((r) => `<div class="res-card"><div><b>${esc(r[0])}</b><p>${esc(r[2])}</p></div><a class="btn outline small" href="${r[1]}" target="_blank" rel="noopener">Mở ↗</a></div>`).join('')}</div>
  <h3>2. Kho Minh họa, Ảnh nền &amp; Avatar</h3>
  <div class="res-grid">${IMAGE_RESOURCES.map((r) => `<div class="res-card"><div><b>${esc(r[0])}</b><p>${esc(r[2])}</p></div><a class="btn outline small" href="${r[1]}" target="_blank" rel="noopener">Mở ↗</a></div>`).join('')}</div>
- <div class="callout warn"><strong>Cảnh báo đặc thù PyQt6 (không dùng file .qrc / pyrcc6)</strong>PyQt6 đã bỏ công cụ <code>pyrcc6</code>. Nếu gắn ảnh qua file <code>.qrc</code> trong Qt Designer rồi chạy <code>pyuic6</code>, app sẽ lỗi <code>ModuleNotFoundError: resources_rc</code>. Tuyệt đối không trỏ ảnh tới thư mục <code>Downloads/</code> hoặc <code>Desktop/</code> — hãy chép ảnh vào thư mục <code>assets/</code> cạnh file <code>main.py</code> và nạp bằng đường dẫn tương đối bên dưới.</div>
- <div class="codebox" style="max-height:none">du-an/\n├─ assets/\n│  ├─ icons/     (icon cho nút bấm, 20x20 đến 32x32 px)\n│  └─ images/    (logo, ảnh minh họa, avatar)\n├─ login.ui, register.ui, home.ui\n└─ main.py, auth.py</div>
- <h3>Code mẫu nạp icon &amp; ảnh an toàn trong PyQt6</h3>
- ${codeBlock('assetsPy', 'Sao chép code nạp ảnh PyQt6')}`;
+ <div class="callout warn"><strong>Cảnh báo đặc thù PyQt6 (không dùng file .qrc / pyrcc6)</strong>PyQt6 đã bỏ công cụ <code>pyrcc6</code>. Nếu gắn ảnh qua file <code>.qrc</code> trong Qt Designer rồi chạy <code>pyuic6</code>, app sẽ lỗi <code>ModuleNotFoundError: resources_rc</code>. Tuyệt đối không trỏ ảnh tới thư mục <code>Downloads/</code> hoặc <code>Desktop/</code> — hãy chép ảnh vào thư mục <code>assets/</code> trong dự án rồi chọn trực tiếp trong Qt Designer (mục <code>icon</code> của nút hoặc mục <code>pixmap</code> và tích <code>scaledContents</code> của <code>QLabel</code>).</div>
+ <div class="codebox" style="max-height:none">du-an/\n├─ assets/\n│  ├─ icons/     (icon cho nút bấm, 20x20 đến 32x32 px)\n│  └─ images/    (logo, ảnh minh họa, avatar)\n├─ gui/          (login.ui, register.ui, home.ui)\n└─ main.py, auth.py</div>`;
   const w2b = `<p class="lead" style="margin-bottom:12px">Đặt <code>objectName</code> theo quy ước <b>tiền tố + Tên</b>. Tuần 3 dùng đúng các tên này trong code, nên đặt sai là code báo lỗi thiếu thuộc tính.</p>
  <div class="callout"><strong>Quy ước tiền tố</strong>txt (ô nhập) · btn (nút) · lbl (nhãn) · chk (ô chọn) · cbo (danh sách thả xuống) · frm (khung) · tbl (bảng) · lst (danh sách) · dte (ngày) · pbr (thanh tiến độ). Bảng chia theo 3 form; tên chỉ cần không trùng trong cùng một form.</div>
  <div class="names" id="namesTable"></div>
@@ -1940,7 +1920,6 @@ function simRegister(user, pass, confirm, exists) {
   const OUT = {
     aiPrompt: buildAiPrompt,
     uizardPrompt: buildUizardPrompt,
-    assetsPy: buildAssetsPy,
     aiPromptW2: () => buildWeekAiPrompt(2),
     aiPromptW3: () => buildWeekAiPrompt(3),
     aiPromptW4: () => buildWeekAiPrompt(4),

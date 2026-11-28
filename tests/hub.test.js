@@ -73,9 +73,6 @@ assert.ok(!guardedMain.includes('self.ui..clicked'), 'Không sinh cú pháp lỗ
 
 // Phase 2 pure
 ctx.S = ctx.def();
-const assetsPy = ctx.buildAssetsPy();
-assert.ok(assetsPy.includes('BASE_DIR') && assetsPy.includes('QIcon'), 'buildAssetsPy dùng đường dẫn tương đối BASE_DIR');
-assert.ok(!assetsPy.includes('pyrcc6') && !assetsPy.includes('_rc'), 'buildAssetsPy không dùng pyrcc6');
 ctx.S.f.appName = 'StudyFlow';
 ctx.S.f.custName = 'Pomodoro';
 assert.ok(ctx.buildWeekAiPrompt(2).includes('StudyFlow') && ctx.buildWeekAiPrompt(2).includes('pyrcc6'));
@@ -208,6 +205,8 @@ setTimeout(async () => {
   assert.ok(d.getElementById('p-tuan-2').innerHTML.includes('lucide.dev'), 'Tuần 2 có Lucide');
   assert.ok(d.getElementById('p-tuan-2').innerHTML.includes('undraw.co'), 'Tuần 2 có unDraw');
   assert.ok(d.getElementById('p-tuan-2').innerHTML.includes('pyrcc6'), 'Tuần 2 có cảnh báo pyrcc6');
+  assert.ok(!d.getElementById('p-tuan-2').innerHTML.includes('Code mẫu nạp icon'), 'Đã bỏ mục code nạp icon/ảnh trong PyQt6');
+  assert.strictEqual(d.querySelector('[data-out="assetsPy"]'), null, 'Không còn khối code assetsPy');
   assert.ok(d.getElementById('p-tuan-3').innerHTML.includes('AttributeError'), 'Tuần 3 có bảng Debug 5 lỗi');
   d.querySelector('[data-mini-tab="pomodoro"]').click();
   assert.ok(d.querySelector('[data-out="miniCode"]').textContent.includes('QTimer'), 'Chuyển mẫu mini Pomodoro hiện QTimer');

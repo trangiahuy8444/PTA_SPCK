@@ -29,9 +29,13 @@ class AuthService:
             return
         try:
             with open(self.path, "r", encoding="utf-8") as f:
-                for item in json.load(f):
-                    self.users.append(User(item["username"], item["password_hash"]))
-        except (ValueError, KeyError):
+                data = json.load(f)
+            if not isinstance(data, list):
+                self.users = []
+                return
+            for item in data:
+                self.users.append(User(item["username"], item["password_hash"]))
+        except (ValueError, KeyError, TypeError):
             self.users = []  # file hỏng: bắt đầu lại với danh sách rỗng
 
     def save(self):
